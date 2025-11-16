@@ -1,0 +1,1462 @@
+<center>
+<font size=10>Project NLP - Healthcare
+</center>
+</font>
+<center>
+<font size=6>Retrieval-Augmented Generation (RAG)
+</center>
+<p></font></p>
+<figure>
+<img src="https://d2ms8rpfqc4h24.cloudfront.net/leveraging_ai_powered_virtual_health_assistants_for_enhanced_patient_education_13dabc22ce.jpg" alt="" /><figcaption>link text</figcaption>
+</figure>
+<h2 id="problem-definition"><strong>Problem Definition</strong></h2>
+<p>The healthcare industry is rapidly evolving, and professionals face increasing challenges in managing vast volumes of medical data while delivering accurate and timely diagnoses. Quick access to comprehensive, reliable, and up-to-date medical knowledge is critical for improving patient outcomes and ensuring informed decision-making in a fast-paced environment.</p>
+<p>Healthcare professionals often encounter information overload, struggling to sift through extensive research and data to create accurate diagnoses and treatment plans. This challenge is amplified by the need for efficiency, particularly in emergencies, where time-sensitive decisions are vital. Furthermore, access to trusted, current medical information from renowned manuals and research papers is essential for maintaining high standards of care.</p>
+<p>To address these challenges, healthcare centers can focus on integrating systems that streamline access to medical knowledge, provide tools to support quick decision-making and enhance efficiency. Leveraging centralized knowledge platforms and ensuring healthcare providers have continuous access to reliable resources can significantly improve patient care and operational effectiveness.</p>
+<h2 id="objective">Objective</h2>
+<p>As an AI specialist, your task is to develop a RAG-based AI solution using renowned medical manuals to address healthcare challenges. The objective is to understand information overload, apply AI techniques to streamline decision-making, analyze its impact on diagnostics and patient outcomes, evaluate its potential to standardize care practices, and create a functional prototype demonstrating its feasibility and effectiveness.</p>
+<h2 id="questions-to-answer">Questions to Answer</h2>
+<ul>
+<li>What is the protocol for managing sepsis in a critical care unit?</li>
+<li>What are the common symptoms of appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?</li>
+<li>What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?</li>
+<li>What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?</li>
+<li>What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?</li>
+</ul>
+<h2 id="installing-and-importing-the-necessary-libraries"><strong>Installing and Importing the Necessary Libraries</strong></h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="co"># Installation for GPU llama-cpp-python</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="op">!</span>CMAKE_ARGS<span class="op">=</span><span class="st">&quot;-DLLAMA_CUBLAS=off&quot;</span> FORCE_CMAKE<span class="op">=</span><span class="dv">1</span> pip install llama<span class="op">-</span>cpp<span class="op">-</span>python<span class="op">==</span><span class="fl">0.2.28</span>  <span class="op">--</span>force<span class="op">-</span>reinstall <span class="op">--</span>upgrade <span class="op">--</span>no<span class="op">-</span>cache<span class="op">-</span><span class="bu">dir</span> <span class="op">-</span>q <span class="dv">2</span><span class="op">&gt;/</span>dev<span class="op">/</span>null</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="op">!</span>pip uninstall <span class="op">-</span>y numpy pandas chromadb</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="op">!</span>pip install <span class="op">-</span>q numpy<span class="op">==</span><span class="fl">1.26.0</span> pandas<span class="op">==</span><span class="fl">2.1.4</span> pypdf<span class="op">==</span><span class="fl">4.0.1</span> langchain<span class="op">==</span><span class="fl">0.1.1</span> langchain<span class="op">-</span>community<span class="op">==</span><span class="fl">0.0.13</span> chromadb<span class="op">==</span><span class="fl">0.4.18</span> sentence<span class="op">-</span>transformers<span class="op">==</span><span class="fl">2.3.1</span> huggingface_hub<span class="op">==</span><span class="fl">0.23.2</span> tiktoken</span></code></pre></div>
+<pre><code>[?25l     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m0.0/9.4 MB[0m [31m?[0m eta [36m-:--:--[0m[2K     [91m━━━━━━[0m[91m╸[0m[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m1.6/9.4 MB[0m [31m46.5 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[90m╺[0m[90m━━━━[0m [32m8.3/9.4 MB[0m [31m120.5 MB/s[0m eta [36m0:00:01[0m[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m9.4/9.4 MB[0m [31m129.3 MB/s[0m eta [36m0:00:00[0m
+[?25h  Installing build dependencies ... [?25l[?25hdone
+  Getting requirements to build wheel ... [?25l[?25hdone
+  Installing backend dependencies ... [?25l[?25hdone
+  Preparing metadata (pyproject.toml) ... [?25l[?25hdone
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m62.1/62.1 kB[0m [31m305.2 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m45.5/45.5 kB[0m [31m284.8 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m16.6/16.6 MB[0m [31m363.1 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.6/44.6 kB[0m [31m257.4 MB/s[0m eta [36m0:00:00[0m
+[?25h  Building wheel for llama-cpp-python (pyproject.toml) ... [?25l[?25hdone
+Found existing installation: numpy 2.3.4
+Uninstalling numpy-2.3.4:
+  Successfully uninstalled numpy-2.3.4
+Found existing installation: pandas 2.2.2
+Uninstalling pandas-2.2.2:
+  Successfully uninstalled pandas-2.2.2
+[33mWARNING: Skipping chromadb as it is not installed.[0m[33m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m58.5/58.5 kB[0m [31m3.3 MB/s[0m eta [36m0:00:00[0m
+[?25h  Installing build dependencies ... [?25l[?25hdone
+  Getting requirements to build wheel ... [?25l[?25hdone
+  Preparing metadata (pyproject.toml) ... [?25l[?25hdone
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m67.3/67.3 kB[0m [31m7.2 MB/s[0m eta [36m0:00:00[0m
+[?25h  Installing build dependencies ... [?25l[?25hdone
+  Getting requirements to build wheel ... [?25l[?25hdone
+  Preparing metadata (pyproject.toml) ... [?25l[?25hdone
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.1/40.1 kB[0m [31m3.5 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m42.2/42.2 kB[0m [31m3.7 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.1/40.1 kB[0m [31m3.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m42.0/42.0 kB[0m [31m3.4 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m42.0/42.0 kB[0m [31m3.7 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m42.0/42.0 kB[0m [31m3.0 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m42.0/42.0 kB[0m [31m3.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m41.7/41.7 kB[0m [31m3.7 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m41.7/41.7 kB[0m [31m3.7 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.9/40.9 kB[0m [31m3.8 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.9/40.9 kB[0m [31m3.4 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.9/40.9 kB[0m [31m2.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.2/40.2 kB[0m [31m3.9 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m40.2/40.2 kB[0m [31m3.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.0/44.0 kB[0m [31m3.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.4/44.4 kB[0m [31m4.3 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.4/44.4 kB[0m [31m2.6 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.4/44.4 kB[0m [31m2.3 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.4/44.4 kB[0m [31m3.1 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.1/44.1 kB[0m [31m3.9 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m43.5/43.5 kB[0m [31m3.4 MB/s[0m eta [36m0:00:00[0m
+[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m44.1/44.1 kB[0m [31m3.8 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m17.9/17.9 MB[0m [31m133.1 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m11.7/11.7 MB[0m [31m134.7 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m284.0/284.0 kB[0m [31m30.2 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m802.4/802.4 kB[0m [31m63.1 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m1.6/1.6 MB[0m [31m93.0 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m502.4/502.4 kB[0m [31m51.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m132.8/132.8 kB[0m [31m15.7 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m401.7/401.7 kB[0m [31m39.4 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m278.2/278.2 kB[0m [31m31.3 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m2.0/2.0 MB[0m [31m112.0 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m241.2/241.2 kB[0m [31m24.4 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m55.4/55.4 kB[0m [31m5.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m103.3/103.3 kB[0m [31m12.6 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m17.4/17.4 MB[0m [31m141.5 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m72.5/72.5 kB[0m [31m7.4 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m208.0/208.0 kB[0m [31m23.3 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m65.9/65.9 kB[0m [31m6.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m132.3/132.3 kB[0m [31m13.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m53.0/53.0 kB[0m [31m5.8 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m144.5/144.5 kB[0m [31m15.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m6.6/6.6 MB[0m [31m128.7 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m10.0/10.0 MB[0m [31m132.4 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m3.0/3.0 MB[0m [31m124.3 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m517.7/517.7 kB[0m [31m44.2 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m50.9/50.9 kB[0m [31m5.3 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m128.4/128.4 kB[0m [31m12.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m4.4/4.4 MB[0m [31m138.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m456.8/456.8 kB[0m [31m32.8 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m46.0/46.0 kB[0m [31m4.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m86.8/86.8 kB[0m [31m8.9 MB/s[0m eta [36m0:00:00[0m
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m88.0/88.0 kB[0m [31m9.7 MB/s[0m eta [36m0:00:00[0m
+[?25h  Building wheel for chroma-hnswlib (pyproject.toml) ... [?25l[?25hdone
+  Building wheel for pypika (pyproject.toml) ... [?25l[?25hdone
+[31mERROR: pip&#39;s dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+google-colab 1.0.0 requires pandas==2.2.2, but you have pandas 2.1.4 which is incompatible.
+plotnine 0.14.5 requires pandas&gt;=2.2.0, but you have pandas 2.1.4 which is incompatible.
+google-adk 1.17.0 requires opentelemetry-api&lt;=1.37.0,&gt;=1.37.0, but you have opentelemetry-api 1.38.0 which is incompatible.
+google-adk 1.17.0 requires opentelemetry-sdk&lt;=1.37.0,&gt;=1.37.0, but you have opentelemetry-sdk 1.38.0 which is incompatible.
+peft 0.17.1 requires huggingface_hub&gt;=0.25.0, but you have huggingface-hub 0.23.2 which is incompatible.
+datasets 4.0.0 requires huggingface-hub&gt;=0.24.0, but you have huggingface-hub 0.23.2 which is incompatible.
+jax 0.7.2 requires numpy&gt;=2.0, but you have numpy 1.26.0 which is incompatible.
+xarray 2025.10.1 requires packaging&gt;=24.1, but you have packaging 23.2 which is incompatible.
+xarray 2025.10.1 requires pandas&gt;=2.2, but you have pandas 2.1.4 which is incompatible.
+opencv-python 4.12.0.88 requires numpy&lt;2.3.0,&gt;=2; python_version &gt;= &quot;3.9&quot;, but you have numpy 1.26.0 which is incompatible.
+gradio 5.49.1 requires huggingface-hub&lt;2.0,&gt;=0.33.5, but you have huggingface-hub 0.23.2 which is incompatible.
+thinc 8.3.6 requires numpy&lt;3.0.0,&gt;=2.0.0, but you have numpy 1.26.0 which is incompatible.
+db-dtypes 1.4.3 requires packaging&gt;=24.2.0, but you have packaging 23.2 which is incompatible.
+opencv-python-headless 4.12.0.88 requires numpy&lt;2.3.0,&gt;=2; python_version &gt;= &quot;3.9&quot;, but you have numpy 1.26.0 which is incompatible.
+langchain-text-splitters 0.3.11 requires langchain-core&lt;2.0.0,&gt;=0.3.75, but you have langchain-core 0.1.23 which is incompatible.
+jaxlib 0.7.2 requires numpy&gt;=2.0, but you have numpy 1.26.0 which is incompatible.
+google-cloud-bigquery 3.38.0 requires packaging&gt;=24.2.0, but you have packaging 23.2 which is incompatible.
+diffusers 0.35.2 requires huggingface-hub&gt;=0.34.0, but you have huggingface-hub 0.23.2 which is incompatible.
+mizani 0.13.5 requires pandas&gt;=2.2.0, but you have pandas 2.1.4 which is incompatible.
+pytensor 2.35.1 requires numpy&gt;=2.0, but you have numpy 1.26.0 which is incompatible.
+opencv-contrib-python 4.12.0.88 requires numpy&lt;2.3.0,&gt;=2; python_version &gt;= &quot;3.9&quot;, but you have numpy 1.26.0 which is incompatible.
+opentelemetry-exporter-otlp-proto-http 1.37.0 requires opentelemetry-exporter-otlp-proto-common==1.37.0, but you have opentelemetry-exporter-otlp-proto-common 1.38.0 which is incompatible.
+opentelemetry-exporter-otlp-proto-http 1.37.0 requires opentelemetry-proto==1.37.0, but you have opentelemetry-proto 1.38.0 which is incompatible.
+opentelemetry-exporter-otlp-proto-http 1.37.0 requires opentelemetry-sdk~=1.37.0, but you have opentelemetry-sdk 1.38.0 which is incompatible.[0m[31m
+[0m</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="im">import</span> json</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="im">import</span> tiktoken</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a><span class="co"># Function to download the model from the Hugging Face model hub</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a><span class="im">from</span> huggingface_hub <span class="im">import</span> hf_hub_download</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a><span class="co"># Importing the Llama class from the llama_cpp module</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a><span class="im">from</span> llama_cpp <span class="im">import</span> Llama</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a><span class="im">from</span> langchain.text_splitter <span class="im">import</span> RecursiveCharacterTextSplitter</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a><span class="im">from</span> langchain_community.document_loaders <span class="im">import</span> PyPDFDirectoryLoader, PyPDFLoader</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a><span class="im">from</span> langchain_community.embeddings.sentence_transformer <span class="im">import</span> (</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a>    SentenceTransformerEmbeddings</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true"></a>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a><span class="im">from</span> langchain_community.vectorstores <span class="im">import</span> Chroma</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true"></a><span class="im">import</span> chromadb</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true"></a><span class="im">from</span> google.colab <span class="im">import</span> userdata, drive</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="im">import</span> warnings</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>warnings.filterwarnings(<span class="st">&#39;ignore&#39;</span>)</span></code></pre></div>
+<h2 id="downloading-model-and-loading"><strong>Downloading Model and Loading</strong></h2>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="co"># Defining the Hugging Face repository and model version for Mistral-7B fine-tuned for instruction-following</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>model_name_or_path <span class="op">=</span> <span class="st">&#39;TheBloke/Mistral-7B-Instruct-v0.2-GGUF&#39;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a><span class="co"># Specifying the file name for the quantized Mistral-7B model in GGUF format (Q6_K for optimal performance)</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>model_basename <span class="op">=</span> <span class="st">&#39;mistral-7b-instruct-v0.2.Q6_K.gguf&#39;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a><span class="co"># Downloading the specified model file from Hugging Face Hub and store its local path</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>model_path <span class="op">=</span> hf_hub_download(</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>    repo_id<span class="op">=</span>model_name_or_path, <span class="co">#The Hugging Face repository containing the model</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>    filename<span class="op">=</span>model_basename  <span class="co"># The specific model file to download (in GGUF format)</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a><span class="co">#The GGUF format is used because it provides memory-efficient storage and faster inference while maintaining compatibility across different hardware platforms.</span></span></code></pre></div>
+<pre><code>mistral-7b-instruct-v0.2.Q6_K.gguf:   0%|          | 0.00/5.94G [00:00&lt;?, ?B/s]</code></pre>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>llm <span class="op">=</span> Llama(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>    model_path<span class="op">=</span>model_path, <span class="co">#Path to the GGUF model file</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>    n_ctx<span class="op">=</span><span class="dv">2300</span>, <span class="co">#Sets the context window to 2300 tokens (how much text the model can &quot;see&quot; at once)</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>    n_gpu_layers<span class="op">=</span><span class="dv">38</span>, <span class="co">#Loads 38 model layers onto GPU for faster inference (set to 0 for CPU-only)</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>    n_batch<span class="op">=</span><span class="dv">512</span>, <span class="co">#Number of tokens processed at once</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a>    <span class="co">#verbose=False # Disable verbose output to avoid the fileno error</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a>)</span></code></pre></div>
+<pre><code>AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 1 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | FMA = 1 | NEON = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | BLAS = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | </code></pre>
+<h2 id="model-performance-check-with-basic-parameters"><strong>Model Performance check with Basic Parameters</strong></h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="kw">def</span> response(query, max_tokens<span class="op">=</span><span class="dv">512</span>, temperature<span class="op">=</span><span class="dv">0</span>, top_p<span class="op">=</span><span class="fl">0.95</span>, top_k<span class="op">=</span><span class="dv">50</span>):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>    <span class="co"># Sends the query prompt to the LLM with specified generation parameters</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>    model_output <span class="op">=</span> llm(</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>        prompt<span class="op">=</span>query, <span class="co">#The user&#39;s input question or prompt sent to the LLM</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>        max_tokens<span class="op">=</span>max_tokens, <span class="co">#Maximum number of tokens to generate</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>        temperature<span class="op">=</span>temperature, <span class="co">#Controls randomness</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>        top_p<span class="op">=</span>top_p, <span class="co">#picks from top tokens that make up top_p of total probability</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a>        top_k<span class="op">=</span>top_k <span class="co">#considers only the top_k most likely tokens</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>    )</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>    <span class="co"># Extracting and returning only the text part of the response</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a>    <span class="cf">return</span> model_output[<span class="st">&#39;choices&#39;</span>][<span class="dv">0</span>][<span class="st">&#39;text&#39;</span>].strip()</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a><span class="bu">print</span>(response(<span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span>))</span></code></pre></div>
+<pre><code>Sepsis is a life-threatening condition that can arise from an infection, and it requires prompt recognition and aggressive management in a critical care unit. The following are general steps for managing sepsis in a critical care unit:
+
+1. Early recognition: Recognize the signs and symptoms of sepsis early and initiate treatment as soon as possible. Sepsis can present with various clinical features, including fever or hypothermia, tachycardia or bradycardia, altered mental status, respiratory distress, and lactic acidosis.
+2. ABCs: Ensure airway patency, adequate breathing, and circulatory support. Provide high-flow oxygen via a non-rebreather mask or endotracheal tube if necessary. Initiate intravenous fluids to maintain adequate blood pressure and organ perfusion.
+3. Antibiotics: Administer broad-spectrum antibiotics based on the suspected source of infection and local microbiology data. Consider obtaining cultures before administering antibiotics if feasible.
+4. Source control: Identify and address the source of infection, such as drainage of an abscess or debridement of necrotic tissue.
+5. Hemodynamic support: Provide vasopressors to maintain mean arterial pressure (MAP) greater than 65 mmHg if necessary. Consider using inotropic agents to improve cardiac output if needed.
+6. Fluid resuscitation: Administer intravenous fluids to maintain adequate tissue perfusion and organ function. Use crystalloids initially, followed by colloids or blood products as needed.
+7. Vasopressor dosing: Titrate vasopressors to maintain MAP greater than 65 mmHg while minimizing the risk of organ dysfunction.
+8. Renal replacement therapy: Consider initiating renal replacement therapy (RRT) in patients with sepsis-induced acute kidney injury or those who are at high risk for developing it.
+9. Glucose control: Maintain strict glucose control to prevent hyperglycemia, which can worsen inflammation and organ dysfunction. Aim for a blood glucose level between 80 and 150 mg/dL.
+10. Corticosteroids: Consider using corticosteroids</code></pre>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="bu">print</span>(response(<span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Appendicitis is a medical condition characterized by inflammation of the appendix, a small tube-shaped organ located in the lower right side of the abdomen. The symptoms of appendicitis can vary from person to person, but some common signs include:
+
+1. Abdominal pain: The pain is typically located in the lower right quadrant of the abdomen and may start as a mild discomfort that gradually worsens over time. The pain may be constant or intermittent and may be aggravated by movement, deep breathing, or coughing.
+2. Loss of appetite: People with appendicitis may lose their appetite due to abdominal pain or nausea.
+3. Nausea and vomiting: Vomiting is a common symptom of appendicitis, especially in the later stages of the condition.
+4. Fever: A fever of 100.4°F (38°C) or higher may be present in people with appendicitis.
+5. Constipation or diarrhea: Some people with appendicitis experience constipation, while others have diarrhea.
+6. Rebound tenderness: When the doctor presses on the abdomen, there may be tenderness and pain that disappears when pressure is released (rebound tenderness).
+7. Guarding: People with appendicitis may involuntarily contract their abdominal muscles to protect the area from pain (guarding).
+
+Appendicitis cannot be cured via medicine alone. Antibiotics may be used to treat any accompanying bacterial infection, but they do not address the underlying inflammation or the presence of the appendix itself. Surgery is the only effective treatment for appendicitis. The most common surgical procedure used to remove the appendix is called an appendectomy. This procedure can be performed as an open surgery or laparoscopically, depending on the individual&#39;s condition and the surgeon&#39;s preference. During an appendectomy, the appendix is removed along with any infected tissue in the surrounding area. After the surgery, patients typically need to stay in the hospital for a few days to recover before returning home.</code></pre>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="bu">print</span>(response(<span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Sudden patchy hair loss, also known as alopecia areata, is a common autoimmune disorder that affects the hair follicles. It can result in round or oval bald patches on the scalp, but it can also occur on other parts of the body such as the beard area, eyebrows, and eyelashes.
+
+The exact cause of alopecia areata is not known, but it&#39;s believed to be related to a problem with the immune system. Some possible triggers for this condition include stress, genetics, viral infections, and certain medications.
+
+There are several treatments that have been shown to be effective in addressing sudden patchy hair loss:
+
+1. Corticosteroids: These are anti-inflammatory drugs that can help reduce inflammation and suppress the immune system&#39;s attack on the hair follicles. They can be applied topically or taken orally, depending on the severity of the condition.
+2. Minoxidil: This is a medication that has been shown to promote hair growth in some people with alopecia areata. It works by increasing blood flow to the affected area and stimulating hair follicles to produce new hairs.
+3. DHT blockers: Dihydrotestosterone (DHT) is a hormone that can contribute to hair loss. Some people with alopecia areata have high levels of DHT in their scalp. Finasteride and dutasteride are medications that can block the production of DHT, which may help promote hair growth.
+4. Herbal remedies: Certain herbs such as saw palmetto, nettle root, and biotin have been shown to promote hair growth and improve hair health. However, more research is needed to determine their effectiveness in treating alopecia areata specifically.
+5. Dietary changes: Some people with alopecia areata have reported that changing their diet helped improve their hair loss. Eating a balanced diet rich in vitamins and minerals, particularly iron, zinc, and biotin, may help support healthy hair growth.
+6. Stress management: Stress can trigger or worsen alopecia areata. Practicing stress-reducing techniques such as meditation, yoga, or deep breathing exercises may help reduce the severity of hair loss.
+7. Hair transplantation</code></pre>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="bu">print</span>(response(<span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+A person who has sustained a physical injury to the brain, also known as a traumatic brain injury (TBI), may require various treatments depending on the severity and location of the injury. Here are some common treatments recommended for individuals with TBIs:
+
+1. Emergency care: In case of a severe TBI, the first priority is to provide emergency care to ensure the person&#39;s airway is clear, breathing is stable, and circulation is adequate. This may involve intubation, oxygen therapy, and intravenous fluids.
+2. Surgery: Depending on the location and severity of the injury, surgery may be necessary to remove hematomas (clots) or repair skull fractures.
+3. Medications: Various medications may be prescribed to manage symptoms associated with TBIs, such as pain relievers for headaches, anti-seizure medications, and sedatives to help the person relax and rest.
+4. Rehabilitation: Rehabilitation is an essential component of treatment for individuals with TBIs. This may include physical therapy to help improve mobility and strength, occupational therapy to help individuals regain skills necessary for daily living activities, speech-language therapy to address communication difficulties, and cognitive rehabilitation to help individuals recover memory and attention skills.
+5. Assistive devices: Depending on the extent of the injury, assistive devices such as wheelchairs, walkers, or braces may be necessary to help individuals regain mobility and independence.
+6. Support groups: Joining a support group can provide emotional and social support for individuals with TBIs and their families. These groups offer opportunities to connect with others who have experienced similar injuries and share experiences, coping strategies, and resources.
+7. Lifestyle modifications: Making lifestyle modifications, such as getting enough rest, eating a healthy diet, and avoiding alcohol and drugs, can help promote recovery and improve overall health and well-being for individuals with TBIs.
+8. Vocational counseling and training: For individuals who have sustained a TBI that affects their ability to work, vocational counseling and training may be necessary to help them find suitable employment or adjust to new job requirements.
+9. Psychological support: Emotional and psychological support is essential for individuals with TBIs and their families. This may include counseling, therapy, and support groups to help individuals cope with the emotional challenges of recovery</code></pre>
+<div class="sourceCode" id="cb18"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="bu">print</span>(response(<span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+First and foremost, if you suspect that someone has fractured their leg while hiking, it&#39;s essential to ensure their safety and prevent further injury. Here are some necessary precautions:
+
+1. Keep the person calm and still: Encourage them to remain as still as possible to minimize pain and prevent worsening the injury.
+2. Assess the situation: Check for any signs of shock, such as pale skin, rapid heartbeat, or shallow breathing. If you notice these symptoms, seek medical help immediately.
+3. Immobilize the leg: Use a splint, sling, or other available materials to immobilize the leg and prevent movement. Be sure not to apply too much pressure on the injury site.
+4. Provide pain relief: Offer over-the-counter pain medication, such as acetaminophen or ibuprofen, to help manage pain.
+5. Seek medical attention: If the fracture is severe or if you suspect that there may be other injuries, call for emergency medical assistance.
+
+Once you&#39;ve ensured the person&#39;s safety and stability, consider the following steps for their care and recovery:
+
+1. Transportation: Arrange for transportation to a hospital or medical facility as soon as possible. If it&#39;s not an emergency situation, try to make arrangements with friends or family members to help transport the person.
+2. Medical evaluation: A healthcare professional will assess the extent of the fracture and determine the best course of treatment. This may include immobilization with a cast or brace, surgery, or other interventions.
+3. Rehabilitation: After the initial injury has been treated, the person will likely need to undergo rehabilitation to regain strength and mobility in the affected leg. This may involve physical therapy exercises, stretching, and other interventions.
+4. Follow-up care: Regular follow-up appointments with a healthcare professional are essential to ensure proper healing and prevent complications.
+5. Recovery time: The recovery time for a fractured leg can vary depending on the severity of the injury and the individual&#39;s overall health. It&#39;s important to be patient and allow the body adequate time to heal.
+6. Prevention: Encourage the person to take steps to prevent future injuries, such as wearing appropriate footwear, using trekking poles, and taking breaks during long hikes to rest</code></pre>
+<h3 id="obervation">Obervation</h3>
+<ul>
+<li><p>High Medical Appropriateness: The model consistently generates answers that are medically accurate and appropriate for the stated conditions (brain injury, hair loss, sepsis, fractured leg), validating its factual reliability in this domain.</p></li>
+<li><p>Comprehensive Content: Responses are generally detailed and cover a broad spectrum of necessary information, demonstrating strong knowledge acquisition (e.g., listing multiple treatments or protocol steps).</p></li>
+<li><p>Excellent Structure and Readability: Answers are presented in a clear, organized format, frequently using numbered lists or distinct sections, which makes the complex medical information easy for a user to read and follow.</p></li>
+<li><p>Strong Contextual Relevance: The model remains focused on the query’s core topic, generating precise and relevant information without drifting off-topic.</p></li>
+<li><p>Generic Content Depth: While answers are appropriate, they often feel high-level or like general guidelines (e.g., standard protocol steps). They lack the nuance and situational depth that might be required for specific clinical scenarios.</p></li>
+<li><p>Need for Contextual Specificity: The model defaults to useful but basic responses. The information provided is generally applicable rather than highly tailored, implying a need to fine-tune the prompt to demand greater contextual precision.</p></li>
+</ul>
+<p>Lets leverage prompt engineering to enhance the quality of our responses.</p>
+<h2 id="qa-with-prompt-engineering-to-define-parameters"><strong>Q&amp;A with Prompt Engineering to define parameters</strong></h2>
+<p>Lets change the LLM parameter and check the effectiveness of the response</p>
+<ul>
+<li>temp (Temperature): A scalar value that controls the randomness (or “creativity”) of the model’s output by scaling the probability distribution of the next token.</li>
+<li>top_p (Nucleus Sampling): A dynamic sampling filter that restricts the choice of the next token to the smallest set of highest-probability tokens whose cumulative probability exceeds the threshold <span class="math inline"><em>p</em></span>.</li>
+<li>top_k: A static sampling filter that restricts the model’s choice to only the <span class="math inline"><em>K</em></span> most likely tokens at each step.</li>
+<li>max_tokens: A hard limit that defines the maximum number of tokens the model is allowed to generate in its response.</li>
+</ul>
+<h3 id="response-function">Response function</h3>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a><span class="kw">def</span> generate_llama_response(query, temperature, top_p, top_k, max_tokens, instruction<span class="op">=</span><span class="st">&quot;Answer the following question clearly and concisely.&quot;</span>):</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true"></a>    <span class="co"># Create system message with instructions for the model</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true"></a>    system_message <span class="op">=</span> <span class="ss">f&quot;[INST]&lt;&lt;SYS&gt;&gt;</span><span class="ch">\n</span><span class="sc">{</span>instruction<span class="sc">}</span><span class="ch">\n</span><span class="ss">&lt;&lt;/SYS&gt;&gt;[/INST]&quot;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true"></a>    <span class="co"># Construct the final prompt using the user&#39;s query and system message</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true"></a>    prompt <span class="op">=</span> <span class="ss">f&quot;</span><span class="sc">{</span>system_message<span class="sc">}</span><span class="ss"> </span><span class="sc">{</span>query<span class="sc">}</span><span class="ss">&quot;</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true"></a></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true"></a>    <span class="co"># Generate a response using the LLaMA model</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true"></a>    response <span class="op">=</span> llm(</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true"></a>        prompt<span class="op">=</span>prompt,</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true"></a>        max_tokens<span class="op">=</span>max_tokens,</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true"></a>        temperature<span class="op">=</span>temperature,</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true"></a>        top_p<span class="op">=</span>top_p,</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true"></a>        repeat_penalty<span class="op">=</span><span class="fl">1.1</span>,</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true"></a>        top_k<span class="op">=</span>top_k,</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true"></a>        stop<span class="op">=</span>[<span class="st">&#39;&lt;/s&gt;&#39;</span>],</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true"></a>        echo<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true"></a>        seed<span class="op">=</span><span class="dv">42</span>,</span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true"></a>    )</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true"></a></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true"></a>    <span class="co"># Return only the generated answer text</span></span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true"></a>    <span class="cf">return</span> response[<span class="st">&quot;choices&quot;</span>][<span class="dv">0</span>][<span class="st">&quot;text&quot;</span>].strip()</span></code></pre></div>
+<h3 id="changing-temp-parameter-0.7-vs-0">Changing Temp Parameter (0.7 vs 0)</h3>
+<div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The management of sepsis in a critical care unit involves the following steps:
+
+1. Early recognition and diagnosis: Identify sepsis suspects based on clinical suspicion or use of early warning scores, and initiate sepsis assessment within one hour of identification.
+
+2. Immediate intervention: Begin fluid resuscitation with 30 mL/kg crystalloid for hypotension or lactate level &gt;2 mmol/L. Consider administering broad-spectrum antibiotics as soon as possible based on culture and sensitivity results, if not already initiated.
+
+3. Source control: Address the infection source, such as removing catheters, draining abscesses, or performing surgery.
+
+4. Adjusting fluid management: Assess the need for additional fluids based on hemodynamic response to initial resuscitation and ongoing fluid losses. Monitor urine output and central venous pressure.
+
+5. Vasopressor support: Use vasopressors if necessary to maintain mean arterial pressure ≥65 mmHg, while minimizing the risk of tissue ischemia.
+
+6. Corticosteroids: Consider using corticosteroids in patients with refractory septic shock or those who have not responded to fluid resuscitation and vasopressors within one hour.
+
+7. Inotropes: Use inotropic agents to support cardiac function if required.
+
+8. Respiratory support: Provide appropriate ventilator settings and consider using prone positioning, high-flow nasal oxygen, or noninvasive positive pressure ventilation as needed.
+
+9. Coagulation management: Monitor coagulation parameters closely and administer packed red blood cells, fresh frozen plasma, and platelets as needed to maintain hemostasis.
+
+10. Prevention of complications: Provide supportive care, including nutritional support, prevention and treatment of infections, and addressing any electrolyte imbalances.
+
+It&#39;s important to note that the management approach may vary depending on individual patient factors, such as comorbidities, age, and severity of sepsis. Additionally, ongoing monitoring and reassessment are crucial to ensure effective treatment and timely escalation if necessary.</code></pre>
+<h4 id="temperature-0">temperature = 0</h4>
+<div class="sourceCode" id="cb23"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The management of sepsis in a critical care unit involves early recognition, prompt initiation of antibiotics, fluid resuscitation, and supportive measures. The Sequential [Sepsis-related] Organ Failure Assessment (SOFA) score can be used to identify patients at risk for developing sepsis or worsening sepsis. Once sepsis is suspected, blood cultures should be obtained and broad-spectrum antibiotics administered based on the patient&#39;s clinical presentation and local microbiology data. Fluid resuscitation with crystalloids or colloids may be necessary to maintain adequate tissue perfusion. Vasopressors and/or mechanical ventilation may also be required for hemodynamic support. Corticosteroids, anticoagulation, and other adjunctive therapies may be considered based on individual patient needs and clinical trials. Close monitoring of vital signs, laboratory values, and organ function is essential to assess response to treatment and adjust therapy as needed.</code></pre>
+<h4 id="observation">Observation</h4>
+<p>Temp 0.7 (Superior): Generated comprehensive, nuanced clinical protocol with specific medical metrics, resulting in highly useful, human-like output due to greater token exploration.</p>
+<p>Temp 0.0 (Inferior): Produced incomplete, truncated, generic content, exhibiting a stiff, deterministic style that lacked critical detail for decision-making.</p>
+<h3 id="changing-top_p-parameter-0.95-vs-0.85">Changing top_p Parameter (0.95 vs 0.85)</h3>
+<div class="sourceCode" id="cb25"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Appendicitis is an inflammatory condition of the appendix, a small pouch that extends from the large intestine. The most common symptoms are:
+1. Sudden pain in the lower right abdomen, sometimes starting as a mild pain that develops into sharp cramps over several hours.
+2. Loss of appetite and feeling sick to your stomach (nausea).
+3. Fever and chills.
+4. Abdominal swelling.
+5. Inability to pass gas or have a bowel movement.
+
+Appendicitis cannot be cured via medicine alone, as the inflammation can quickly lead to the appendix rupturing, resulting in peritonitis - a serious infection of the abdominal cavity. The standard treatment for appendicitis is surgical removal of the appendix through a procedure called an appendectomy. This surgery can be performed either open or laparoscopically, depending on various factors including the severity of the condition and the patient&#39;s overall health.
+
+Prompt diagnosis and timely surgical intervention are crucial for successful treatment, as complications from ruptured appendicitis can be severe and potentially life-threatening.</code></pre>
+<h4 id="top_p0.85">top_p=0.85</h4>
+<div class="sourceCode" id="cb27"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.85</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Appendicitis is characterized by symptoms such as:
+1. Sudden pain in the lower right abdomen, often starting around the belly button and migrating to the right.
+2. Loss of appetite.
+3. Nausea and vomiting.
+4. Fever (usually over 101°F or 38.3°C).
+5. Abdominal swelling and tenderness.
+6. Constipation or diarrhea.
+7. Inability to pass gas or have a bowel movement.
+
+The condition cannot be cured with medicine alone, as the appendix cannot heal itself once it becomes inflamed or ruptures. The standard treatment for appendicitis is surgical removal of the appendix, which is known as an appendectomy. This procedure can typically be done through laparoscopic surgery, making the recovery process faster and less painful compared to traditional open surgeries. In some cases where the inflammation has spread beyond the appendix or if there are complications, a more extensive procedure like an open appendectomy may be required. It&#39;s essential to consult a healthcare professional for proper diagnosis and treatment as soon as possible to prevent potential complications such as rupture of the appendix or sepsis (a severe infection).</code></pre>
+<h4 id="observation-1">Observation</h4>
+<ul>
+<li>Answer 2 (<span class="math inline">top_p = 0.85</span>): Superior—The narrower range created more focused and relevant content, minimizing irrelevant variation.</li>
+<li>Answer 1 (<span class="math inline">top_p = 0.95</span>): Inferior—The wider range led to more diverse but general content and less precise output.</li>
+<li>Conclusion: A slightly lower <span class="math inline">top_p</span> improved quality by demanding greater concentration on the most probable tokens.</li>
+</ul>
+<h3 id="changing-top_k-parameter-50-vs-80">Changing top_k Parameter (50 vs 80)</h3>
+<div class="sourceCode" id="cb29"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+There are several potential causes of sudden, patchy hair loss, including:
+
+1. Alopecia Areata: This is an autoimmune condition that results in round patches of hair loss on the scalp or other parts of the body. Treatments for alopecia areata include topical corticosteroids, immunomodulators like minoxidil, and systemic medications like corticosteroids.
+2. Traction Alopecia: This is a type of hair loss caused by pulling or tension on the hair, often seen in people who wear tight braids or ponytails. Treatment for traction alopecia involves avoiding hairstyles that pull on the hair and allowing the hair to grow back naturally.
+3. Tinea Capitis: This is a fungal infection of the scalp that can cause patchy hair loss, often accompanied by scaling and redness. Treatment for tinea capitis involves antifungal medications, either topical or oral.
+4. Nutritional Deficiencies: Certain nutritional deficiencies, such as iron deficiency, can lead to patchy hair loss. Treatment for nutritional deficiencies involves addressing the underlying cause through dietary changes and/or supplements.
+5. Stress: Sudden stress or emotional trauma can cause temporary patchy hair loss. Treatment for stress-related hair loss involves managing the underlying stress through relaxation techniques, therapy, or medication.
+
+It&#39;s important to note that if you are experiencing sudden, patchy hair loss, it&#39;s best to consult with a healthcare professional or dermatologist to determine the underlying cause and appropriate treatment.</code></pre>
+<h4 id="top_k80">top_k=80</h4>
+<div class="sourceCode" id="cb31"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">80</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+There are several potential causes of sudden, patchy hair loss, including:
+
+1. Alopecia Areata: This is an autoimmune condition that results in round patches of hair loss on the scalp or other parts of the body. Treatments for alopecia areata include topical corticosteroids, immunomodulators like minoxidil, and systemic medications like corticosteroids.
+2. Traction Alopecia: This is a type of hair loss caused by pulling or tension on the hair, often seen in people who wear tight braids or ponytails. Treatment for traction alopecia involves avoiding hairstyles that pull on the hair and allowing the hair to grow back naturally.
+3. Tinea Capitis: This is a fungal infection of the scalp that can cause patchy hair loss, often accompanied by scaling and redness. Treatment for tinea capitis involves antifungal medications, either topical or oral.
+4. Nutritional Deficiencies: Certain nutritional deficiencies, such as iron deficiency, can lead to patchy hair loss. Treatment for nutritional deficiencies involves addressing the underlying cause through dietary changes and/or supplements.
+5. Stress: Sudden stress or emotional trauma can cause temporary patchy hair loss. Treatment for stress-related hair loss involves managing the underlying stress through relaxation techniques, therapy, or medication.
+
+It&#39;s important to note that if you are experiencing sudden, patchy hair loss, it&#39;s best to consult with a healthcare professional or dermatologist to determine the underlying cause and appropriate treatment.</code></pre>
+<h4 id="observation-2">Observation</h4>
+<p>The comparison shows how increasing the <span class="math inline">top_k</span> value can influence the depth and specificity of the response.</p>
+<ul>
+<li><p>Answer 2 (<span class="math inline">top_k = 80</span>): Superior. The wider <span class="math inline"><em>K</em></span> allowed the model to access a broader vocabulary, resulting in deeper clinical detail and more actionable insights regarding specific treatments (Alopecia Areata, Traction Alopecia).</p></li>
+<li><p>Answer 1 (<span class="math inline">top_k = 50</span>): Inferior. The narrower <span class="math inline"><em>K</em></span> restricted the model, yielding a more general overview that listed causes and only briefly mentioned treatments.</p></li>
+<li><p>Conclusion: For this medical project, a higher <span class="math inline">top_k</span> (80) was more effective, providing the necessary level of clinical depth required for actionable results.</p></li>
+</ul>
+<h3 id="changing-max_tokens-parameter-1024-vs-512">Changing max_tokens Parameter (1024 vs 512)</h3>
+<div class="sourceCode" id="cb33"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The treatment for a brain injury depends on the severity and location of the injury. Here are some common interventions:
+
+1. Acute care: Immediate care may include surgery to remove hematomas or other obstructions, controlling swelling and preventing further damage through medications such as corticosteroids or mannitol, and managing increased intracranial pressure through intubation and mechanical ventilation.
+
+2. Rehabilitation: Physical therapy, occupational therapy, speech-language therapy, and cognitive rehabilitation can help improve function, prevent complications, and promote independence following a brain injury.
+
+3. Medications: Depending on the symptoms, medications may be prescribed to manage conditions such as seizures, pain, or depression.
+
+4. Supportive care: This includes ensuring adequate nutrition, hydration, and maintaining a clean environment to prevent infections.
+
+5. Assistive devices: Devices like wheelchairs, walkers, or communication aids can help individuals regain mobility and function lost due to the injury.
+
+6. Alternative therapies: Some people may benefit from alternative treatments such as acupuncture, massage therapy, or biofeedback to manage symptoms and improve overall well-being.
+
+7. Education and counseling: Providing information about the injury, treatment options, and resources for support can help individuals and their families cope with the emotional challenges of brain injury recovery.</code></pre>
+<h4 id="max_token512">max_token=512</h4>
+<div class="sourceCode" id="cb35"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">512</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The treatment for a brain injury depends on the severity and location of the injury. Here are some common interventions:
+
+1. Acute care: Immediate care may include surgery to remove hematomas or other obstructions, controlling swelling and preventing further damage through medications such as corticosteroids or mannitol, and managing increased intracranial pressure through intubation and mechanical ventilation.
+
+2. Rehabilitation: Physical therapy, occupational therapy, speech-language therapy, and cognitive rehabilitation can help improve function, prevent complications, and promote independence following a brain injury.
+
+3. Medications: Depending on the symptoms, medications may be prescribed to manage conditions such as seizures, pain, or depression.
+
+4. Supportive care: This includes ensuring adequate nutrition, hydration, and maintaining a clean environment to prevent infections.
+
+5. Assistive devices: Devices like wheelchairs, walkers, or communication aids can help individuals regain mobility and function lost due to the injury.
+
+6. Alternative therapies: Some people may benefit from alternative treatments such as acupuncture, massage therapy, or biofeedback to manage symptoms and improve overall well-being.
+
+7. Education and counseling: Providing information about the injury, treatment options, and resources for support can help individuals and their families cope with the emotional challenges of brain injury recovery.</code></pre>
+<h4 id="observation-3">Observation</h4>
+<p>The comparison clearly shows that increasing the <span class="math inline">Max_tokens</span> parameter directly translates to a more comprehensive and well-rounded response.</p>
+<ul>
+<li><p>Answer 1 (<span class="math inline">Max_tokens = 1024</span>): Superior. Provided a comprehensive and detailed overview of brain injury treatment, including specific interventions and covering a wider range of recovery aspects (physical, cognitive, and emotional support).</p></li>
+<li><p>Answer 2 (<span class="math inline">Max_tokens = 512</span>): Inferior. Was more concise, focusing only on key areas (initial care, medications, rehabilitation). While medically accurate, the answer was less detailed and omitted broader aspects of recovery.</p></li>
+<li><p>Conclusion: For complex topics like medical protocols, the larger <span class="math inline">Max_tokens</span> (1024) is preferred as it allows the model to fully elaborate and provide a more holistic and detailed answer.</p></li>
+</ul>
+<h3 id="basic-vs-top-parameters">Basic vs top parameters</h3>
+<div class="sourceCode" id="cb37"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.95</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">50</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+1. Assess the severity of the injury: If the fracture is open (compound) or the person is experiencing severe pain, swelling, or inability to move, call emergency services immediately for medical attention.
+2. Keep the area immobile: Use a splint, sling, or brace to keep the leg as still as possible to prevent further damage and promote healing.
+3. Apply ice: Apply an ice pack to the injured area for 15-20 minutes at a time every few hours to reduce swelling and pain. Do not apply ice directly to the skin; use a protective layer such as a towel or cloth.
+4. Elevate the leg: Keep the fractured leg raised above heart level to minimize swelling and help reduce pain.
+5. Pain management: Over-the-counter pain relievers like acetaminophen or ibuprofen can be taken as directed to manage pain. If prescription pain medication is needed, follow your healthcare provider&#39;s instructions carefully.
+6. Monitor for signs of infection: Watch for signs of infection such as redness, warmth, increased swelling, and pus at the injury site. Inform your healthcare provider if you notice any of these symptoms.
+7. Follow a doctor&#39;s care plan: Attend all scheduled appointments with your healthcare provider to monitor progress, adjust the treatment plan, and learn about exercises or physical therapy to help restore mobility and strength.
+8. Allow for adequate healing time: Recovery from a leg fracture can take several weeks to months, depending on the severity of the injury and individual healing capabilities. Avoid putting weight on the affected leg until your healthcare provider advises it is safe to do so.
+9. Consider any additional needs: If you are living alone or have limited mobility, consider arranging for help with daily tasks or assistance getting around during your recovery period. Your healthcare provider or a physical therapist may also offer recommendations for adaptive equipment or modifications to your home environment to make your recovery easier.</code></pre>
+<div class="sourceCode" id="cb39"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true"></a>query<span class="op">=</span> <span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true"></a>temperature <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true"></a>top_p <span class="op">=</span> <span class="fl">0.85</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true"></a>top_k <span class="op">=</span> <span class="dv">80</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true"></a>max_tokens <span class="op">=</span> <span class="dv">1024</span></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true"></a><span class="bu">print</span>(generate_llama_response(query, temperature, top_p, top_k, max_tokens))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+1. Assess the severity of the injury: If the fracture is open (compound), keep the injured area clean and covered to prevent infection. Do not attempt to realign the bone or apply pressure to the affected limb. Seek immediate medical attention.
+
+2. Immobilize the leg: Use a splint, sling, or brace to support the injured leg and prevent further movement. This will help reduce pain and prevent complications such as swelling and muscle damage.
+
+3. Manage pain: Over-the-counter pain medication can be used to manage discomfort. If the pain is severe, consult a healthcare professional for prescription pain relief.
+
+4. Monitor vital signs: Keep an eye on the person&#39;s heart rate, breathing rate, and temperature. These indicators can provide valuable information about their overall condition and help identify potential complications.
+
+5. Provide fluids: Encourage the person to drink plenty of water or other clear fluids to maintain hydration. Dehydration can slow down recovery and worsen symptoms.
+
+6. Consider transporting them to a medical facility: Depending on the severity of the injury, it may be necessary to transport the person to a hospital for further evaluation and treatment. This is especially important if there are signs of significant bleeding, severe pain, or difficulty breathing.
+
+7. Follow-up care: After the initial injury has been treated, follow your healthcare professional&#39;s instructions for ongoing care and recovery, which may include physical therapy and rehabilitation exercises to regain strength and mobility in the affected leg.</code></pre>
+<h4 id="observation-4">Observation</h4>
+<ul>
+<li><p>Modified Parameters (Answer 2) were Superior: Produced a holistic and structured response that covered both immediate care and long-term recovery (e.g., nutrition, physical therapy).</p></li>
+<li><p>Default Parameters (Answer 1) were Inferior: Focused too narrowly on immediate emergency steps (e.g., severity assessment), lacking a comprehensive follow-up plan.</p></li>
+<li><p>Conclusion: Modification successfully shifted the model from a simple emergency protocol to a complete, structured guide covering the full recovery process.</p></li>
+</ul>
+<h2 id="loading-the-data"><strong>Loading the data</strong></h2>
+<div class="sourceCode" id="cb41"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true"></a><span class="co"># uncomment and run the below code snippets if the dataset is present in the Google Drive</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true"></a><span class="im">from</span> google.colab <span class="im">import</span> drive</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true"></a>drive.mount(<span class="st">&#39;/content/drive&#39;</span>)</span></code></pre></div>
+<pre><code>Mounted at /content/drive</code></pre>
+<div class="sourceCode" id="cb43"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true"></a>pdf_file <span class="op">=</span> <span class="st">&quot;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb44"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true"></a>pdf_loader <span class="op">=</span> PyPDFLoader(pdf_file)</span></code></pre></div>
+<div class="sourceCode" id="cb45"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true"></a>merck <span class="op">=</span> pdf_loader.load()</span></code></pre></div>
+<div class="sourceCode" id="cb46"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true"></a><span class="im">from</span> langchain.schema <span class="im">import</span> Document <span class="co"># Import the Document class</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true"></a></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true"></a>phrase_to_remove <span class="op">=</span> <span class="st">&quot;This file is meant for personal use by rajasekar.t7@gmail.com only.&quot;</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true"></a>cleaned_docs <span class="op">=</span> []</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true"></a></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true"></a><span class="cf">for</span> doc <span class="kw">in</span> merck:</span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true"></a>    <span class="co"># Remove the specific contamination phrase and clean up whitespace</span></span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true"></a>    cleaned_content <span class="op">=</span> doc.page_content.replace(phrase_to_remove, <span class="st">&quot;&quot;</span>).strip()</span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true"></a></span>
+<span id="cb46-10"><a href="#cb46-10" aria-hidden="true"></a>    <span class="co"># Create a new Document object with the cleaned content and original metadata</span></span>
+<span id="cb46-11"><a href="#cb46-11" aria-hidden="true"></a>    cleaned_doc <span class="op">=</span> Document(page_content<span class="op">=</span>cleaned_content, metadata<span class="op">=</span>doc.metadata)</span>
+<span id="cb46-12"><a href="#cb46-12" aria-hidden="true"></a>    cleaned_docs.append(cleaned_doc)</span>
+<span id="cb46-13"><a href="#cb46-13" aria-hidden="true"></a></span>
+<span id="cb46-14"><a href="#cb46-14" aria-hidden="true"></a>merck<span class="op">=</span>cleaned_docs</span></code></pre></div>
+<div class="sourceCode" id="cb47"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true"></a><span class="bu">len</span>(merck)</span></code></pre></div>
+<pre><code>4114</code></pre>
+<h2 id="retrieval-augmented-generation-rag-process"><strong>Retrieval Augmented Generation (RAG) Process</strong></h2>
+<h3 id="implementing-rag"><strong>Implementing RAG</strong></h3>
+<h4 id="chunking-documents">Chunking documents</h4>
+<div class="sourceCode" id="cb49"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true"></a>text_splitter <span class="op">=</span> RecursiveCharacterTextSplitter.from_tiktoken_encoder(</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true"></a>    encoding_name<span class="op">=</span><span class="st">&#39;cl100k_base&#39;</span>,</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true"></a>    chunk_size<span class="op">=</span><span class="dv">512</span>,</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true"></a>    chunk_overlap<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true"></a>    is_separator_regex<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true"></a>)</span></code></pre></div>
+<p>The given code initializes a <strong>RecursiveCharacterTextSplitter</strong> to split the text into manageable chunks for embedding and retrieval. Here’s a breakdown:</p>
+<ul>
+<li><code>RecursiveCharacterTextSplitter.from_tiktoken_encoder(...)</code>: Uses <strong>TikToken encoding</strong> to properly handle token-based splitting.</li>
+<li><code>encoding_name='cl100k_base'</code>: Specifies the <strong>TikToken encoding</strong> (used by OpenAI models like GPT-4 and GPT-3.5).</li>
+<li><code>chunk_size=512</code>: Each text chunk will have a maximum of <strong>512 tokens</strong>.</li>
+<li><code>chunk_overlap=16</code>: Ensures <strong>overlapping</strong> of 16 tokens between consecutive chunks to preserve context.</li>
+</ul>
+<p>This approach ensures that text is split <strong>intelligently</strong> while maintaining <strong>semantic meaning</strong> for better retrieval and embeddings.</p>
+<div class="sourceCode" id="cb50"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true"></a>document_chunks <span class="op">=</span> pdf_loader.load_and_split(text_splitter)</span></code></pre></div>
+<div class="sourceCode" id="cb51"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true"></a><span class="bu">len</span>(document_chunks)</span></code></pre></div>
+<pre><code>8546</code></pre>
+<p>Let’s take a look at consecutive chunks from the document.</p>
+<div class="sourceCode" id="cb53"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true"></a>i <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true"></a><span class="bu">print</span>(document_chunks[i])</span></code></pre></div>
+<pre><code>page_content=&#39;719\nChapter 68. Retinal Disorders  \n  .................................................................................................................................................\n731\nChapter 69. Optic Nerve Disorders  \n  ......................................................................................................................................\n737\nChapter 70. Orbital Diseases  \n  ..................................................................................................................................................\n742\n7 - Dermatologic Disorders  \n  ....................................................................................................................................................\n742\nChapter 71. Approach to the Dermatologic Patient  \n  .......................................................................................................\n755\nChapter 72. Principles of Topical Dermatologic Therapy  \n  ............................................................................................\n760\nChapter 73. Acne &amp; Related Disorders  \n  ...............................................................................................................................\n766\nChapter 74. Bullous Diseases  \n  .................................................................................................................................................\n771\nChapter 75. Cornification Disorders  \n  .....................................................................................................................................\n775\nChapter 76. Dermatitis  \n  ...............................................................................................................................................................\n786\nChapter 77. Reactions to Sunlight  \n  ........................................................................................................................................\n791\nChapter 78. Psoriasis &amp; Scaling Diseases  \n  ........................................................................................................................\n799\nChapter 79. Hypersensitivity &amp; Inflammatory Disorders  \n  .............................................................................................\n808\nChapter 80. Sweating Disorders  \n  ............................................................................................................................................\n811\nChapter 81. Bacterial Skin Infections  \n  ...................................................................................................................................\n822\nChapter 82. Fungal Skin Infections  \n  ......................................................................................................................................\n831\nChapter 83. Parasitic Skin Infections  \n  ...................................................................................................................................\n836\nChapter 84. Viral Skin Diseases  \n  ............................................................................................................................................\n841\nChapter 85. Pigmentation Disorders  \n  ....................................................................................................................................\n846\nChapter 86. Hair Disorders  \n  .......................................................................................................................................................\n855\nChapter 87. Nail Disorders  \n  .......................................................................................................................................................\n861\nChapter 88. Pressure Ulcers  \n  ...................................................................................................................................................\n867\nChapter 89. Benign Tumors  \n  .....................................................................................................................................................\n874\nChapter 90. Cancers of the Skin  \n  ............................................................................................................................................\n882\n8 - Endocrine &amp; Metabolic Disorders  \n  .............................................................................................................................\n882\nChapter 91. Principles of Endocrinology  \n  ............................................................................................................................\n887\nChapter 92. Pituitary Disorders  \n  ..............................................................................................................................................\n901\nChapter 93. Thyroid Disorders  \n  ................................................................................................................................................rajasekar.t7@gmail.com\nEB3R42OHCV&#39; metadata={&#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;, &#39;page&#39;: 3}</code></pre>
+<div class="sourceCode" id="cb55"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true"></a><span class="bu">print</span>(document_chunks[i<span class="op">+</span><span class="dv">1</span>])</span></code></pre></div>
+<pre><code>page_content=&#39;EB3R42OHCV\nThis file is meant for personal use by rajasekar.t7@gmail.com only.\nSharing or publishing the contents in part or full is liable for legal action.&#39; metadata={&#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;, &#39;page&#39;: 3}</code></pre>
+<p>As we can see there is some overlap between the chunks. This improves the coherence and relevance of retrieved results, as the model can better understand the relationship between adjacent parts of the document. It also helps in maintaining the flow of ideas and ensuring that critical context is available when generating answers, leading to more accurate and contextually consistent outputs.</p>
+<h4 id="choosing-an-embedding-model">Choosing an embedding model</h4>
+<p>A good general-purpose embedding model is <a href="https://huggingface.co/thenlper/gte-large"><code>gte-large</code></a>. The main reason for choosing this model is because of its embedding vector size, which is 512, the same as our token size in chunking.</p>
+<div class="sourceCode" id="cb57"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true"></a>embedding_model <span class="op">=</span> SentenceTransformerEmbeddings(model_name<span class="op">=</span><span class="st">&#39;thenlper/gte-large&#39;</span>)</span></code></pre></div>
+<pre><code>The cache for model files in Transformers v4.22.0 has been updated. Migrating your old cache. This is a one-time only operation. You can interrupt this and resume the migration later on by calling `transformers.utils.move_cache()`.
+
+
+
+0it [00:00, ?it/s]
+
+
+
+modules.json:   0%|          | 0.00/385 [00:00&lt;?, ?B/s]
+
+
+
+README.md: 0.00B [00:00, ?B/s]
+
+
+
+sentence_bert_config.json:   0%|          | 0.00/57.0 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/619 [00:00&lt;?, ?B/s]
+
+
+
+model.safetensors:   0%|          | 0.00/670M [00:00&lt;?, ?B/s]
+
+
+
+tokenizer_config.json:   0%|          | 0.00/342 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt: 0.00B [00:00, ?B/s]
+
+
+
+tokenizer.json: 0.00B [00:00, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/125 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/191 [00:00&lt;?, ?B/s]</code></pre>
+<div class="sourceCode" id="cb59"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true"></a><span class="co"># Generating embedding for the first document chunk</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true"></a>embedding_1 <span class="op">=</span> embedding_model.embed_query(document_chunks[<span class="dv">0</span>].page_content)</span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true"></a><span class="co"># Generating embedding for the second document chunk</span></span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true"></a>embedding_2 <span class="op">=</span> embedding_model.embed_query(document_chunks[<span class="dv">1</span>].page_content)</span></code></pre></div>
+<div class="sourceCode" id="cb60"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true"></a><span class="co">#Checking if both are of the same size</span></span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true"></a><span class="bu">print</span>(<span class="st">&quot;Dimension of the embedding vector &quot;</span>,<span class="bu">len</span>(embedding_1))</span>
+<span id="cb60-3"><a href="#cb60-3" aria-hidden="true"></a><span class="bu">len</span>(embedding_1)<span class="op">==</span><span class="bu">len</span>(embedding_2)</span></code></pre></div>
+<pre><code>Dimension of the embedding vector  1024
+
+
+
+
+
+True</code></pre>
+<p>Now that we have chunked the raw input, <strong>we can present these chunks to an embedding model and then store the generated embeddings into a vector database.</strong> - We generate a vector for each chunk and save this chunk along with the vector representation in a specialized database.</p>
+<h4 id="creating-a-vector-database">Creating a Vector Database</h4>
+<p>While embeddings solve for retrieval of appropriate context given a query, a more efficient application of vectorization is to transform raw data into smaller chunks before feeding it to an embedding model. There are two important reasons why this is needed:</p>
+<ul>
+<li>Embedding models are themselves Transformer models and hence have input length constraints. Any text that is longer than the maximum input length allowed by the embedding model is usually truncated.</li>
+<li>Slicing the data into chunks facilitates fine-grained control of the specific information that can be injected as context. This helps the model focus only on the information most relevant to the query.</li>
+</ul>
+<div class="sourceCode" id="cb62"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true"></a><span class="im">import</span> os</span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true"></a>out_dir <span class="op">=</span> <span class="st">&#39;merck_db&#39;</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true"></a></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true"></a><span class="cf">if</span> <span class="kw">not</span> os.path.exists(out_dir):</span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true"></a>  os.makedirs(out_dir)</span></code></pre></div>
+<div class="sourceCode" id="cb63"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true"></a>vectorstore <span class="op">=</span> Chroma.from_documents( <span class="co">#creating a Chroma vector store from a set of document chunks.</span></span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true"></a>    document_chunks, <span class="co">#creating a list of text chunks that will be converted into embeddings..</span></span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true"></a>    embedding_model, <span class="co">#model responsible for embedding the document chunks into vector representations</span></span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true"></a>    persist_directory<span class="op">=</span>out_dir <span class="co">#name of the collection in the Chroma database</span></span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true"></a>)</span></code></pre></div>
+<pre><code>ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given</code></pre>
+<div class="sourceCode" id="cb65"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true"></a>vectorstore <span class="op">=</span> Chroma(persist_directory<span class="op">=</span>out_dir,embedding_function<span class="op">=</span>embedding_model)</span></code></pre></div>
+<pre><code>ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given</code></pre>
+<div class="sourceCode" id="cb67"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true"></a><span class="bu">print</span>(vectorstore.embeddings)</span></code></pre></div>
+<pre><code>client=SentenceTransformer(
+  (0): Transformer({&#39;max_seq_length&#39;: 512, &#39;do_lower_case&#39;: False}) with Transformer model: BertModel 
+  (1): Pooling({&#39;word_embedding_dimension&#39;: 1024, &#39;pooling_mode_cls_token&#39;: False, &#39;pooling_mode_mean_tokens&#39;: True, &#39;pooling_mode_max_tokens&#39;: False, &#39;pooling_mode_mean_sqrt_len_tokens&#39;: False, &#39;pooling_mode_weightedmean_tokens&#39;: False, &#39;pooling_mode_lasttoken&#39;: False})
+  (2): Normalize()
+) model_name=&#39;thenlper/gte-large&#39; cache_folder=None model_kwargs={} encode_kwargs={} multi_process=False</code></pre>
+<div class="sourceCode" id="cb69"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true"></a><span class="bu">print</span>(vectorstore.similarity_search(<span class="st">&quot;Alopecia Areata &quot;</span>,k<span class="op">=</span><span class="dv">3</span>))</span></code></pre></div>
+<pre><code>ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event CollectionQueryEvent: capture() takes 1 positional argument but 3 were given
+
+
+[Document(page_content=&#39;infection or emotional stress. It occasionally coexists with autoimmune vitiligo or thyroiditis.\nDiagnosis\n• Examination\nDiagnosis is by inspection. Alopecia areata typically manifests as discrete circular patches of hair loss\ncharacterized by short broken hairs at the margins, which resemble exclamation points. Nails are\nsometimes pitted or display trachyonychia, a roughness of the nail also seen in lichen planus. Differential\ndiagnosis includes tinea capitis, trichotillomania, discoid lupus, and secondary syphilis. Measures of\nthyroid-stimulating hormone, vitamin B\n12\n, and autoantibodies are indicated only when coexisting disease\nis suspected.\nTreatment\n• Corticosteroids\n• Sometimes topical anthralin, minoxidil or both\nTreatment is with corticosteroids. Triamcinolone acetonide suspension (in doses not to exceed 0.1 mL per\ninjection site, eg, 10 mg/mL concentration to deliver 1 mg) can be injected intradermally if the lesions are\nsmall. Potent topical corticosteroids (such as betamethasone 0.05% bid) can be used; however, they\noften do not penetrate to the depth of the hair bulb where the inflammatory process is located. Oral\ncorticosteroids are effective, but hair loss recurs after cessation of therapy and adverse effects limit use.\nTopical anthralin (0.5 to 1% for 10 to 20 min daily, then washed off, frequency titrated as tolerated up to\n30 min bid) and/or minoxidil may be used. Induction of allergic contact dermatitis using diphencyprone or\nsquaric acid dibutylester leads to hair growth due to unknown mechanisms, but this treatment is best\nreserved for patients with diffuse involvement who have not responded to other therapies.\nAlopecia areata may spontaneously regress, become chronic, or spread diffusely. Risk factors for\nchronicity include extensive involvement, onset before adolescence, atopy, and involvement of the\nperipheral scalp (ophiasis).\nHirsutism\nHirsutism\n is the excessive growth of thick or dark hair in women in locations that are more typical of\nmale hair patterns (eg, mustache, beard, central chest, shoulders, lower abdomen, back, inner thigh). The&#39;, metadata={&#39;page&#39;: 859, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;}), Document(page_content=&#39;corticosteroids, retinoids, or immunosuppressants.\nHair loss due to chemotherapy is temporary and is best treated with a wig; when hair regrows, it may be\ndifferent in color and texture from the original hair. Hair loss due to telogen effluvium or anagen effluvium\nis usually temporary as well and abates after the precipitating agent is eliminated.\nKey Points\n• Androgenetic alopecia (male-pattern and female-pattern hair loss) is the most common type of hair loss.\n• Concomitant virilization in women or scarring hair loss should prompt a thorough evaluation for the\nunderlying disorder.\n• Microscopic hair examination or scalp biopsy may be required for definitive diagnosis.\nAlopecia Areata\nAlopecia areata is sudden patchy hair loss in people with no obvious skin or systemic disorder.\nThe scalp and beard are most frequently affected, but any hairy area may be involved. Hair loss may\naffect most or all of the body (alopecia universalis). Alopecia areata is thought to be an autoimmune\ndisorder affecting genetically susceptible people exposed to unclear environmental triggers, such asThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition\nChapter 86. Hair Disorders\n849rajasekar.t7@gmail.com\nEB3R42OHCV\nThis file is meant for personal use by rajasekar.t7@gmail.com only.\nSharing or publishing the contents in part or full is liable for legal action.&#39;, metadata={&#39;page&#39;: 858, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;}), Document(page_content=&#39;loss and can stimulate hair\n[\nTable 86-2.\n Interpreting Findings in Alopecia]\ngrowth. Efficacy is usually evident within 6 to 8 mo of treatment. Adverse effects include decreased libido,\nerectile and ejaculatory dysfunction, hypersensitivity reactions, gynecomastia, and myopathy. There may\nbe a decrease in prostate-specific antigen levels in older men, which should be taken into account when\nthat test is used for cancer screening. Common practice is to continue treatment for as long as positive\nresults persist. Once treatment is stopped, hair loss returns to previous levels. Finasteride is not indicated\nfor women and is contraindicated in pregnant women because it has teratogenic effects in animals.\nHormonal modulators\n such as oral contraceptives or spironolactone may be useful for female-pattern\nhair loss associated with hyperandrogenemia.\nSurgical options\n include follicle transplant, scalp flaps, and alopecia reduction. Few procedures have\nbeen subjected to scientific scrutiny, but patients who are self-conscious about their hair loss may\nconsider them.\nHair loss due to other causes:\n Underlying disorders are treated.\nMultiple treatment options for alopecia areata exist and include topical, intralesional, or, in severe cases,\nsystemic corticosteroids, topical minoxidil, topical anthralin, topical immunotherapy (diphencyprone or\nsquaric acid dibutylester), or psoralen plus ultraviolet A (PUVA).\nTreatment for traction alopecia is elimination of physical traction or stress to the scalp.\nTreatment for tinea capitis is topical or oral antifungals (see p. \n707\n).\nTrichotillomania is difficult to treat, but behavior modification, clomipramine, or an SSRI (eg, fluoxetine,\nfluvoxamine, paroxetine, sertraline, citalopram) may be of benefit.\nScarring alopecia as seen in central centrifugal scarring alopecia, dissecting cellulitis of the scalp, and\nacne keloidalis nuchae is best treated by a long-acting oral tetracycline in combination with a potent\ntopical corticosteroid.\nLichen planopilaris and chronic cutaneous lupus lesions may be treated with oral antimalarials,&#39;, metadata={&#39;page&#39;: 858, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;})]</code></pre>
+<h4 id="retrieval">Retrieval</h4>
+<p>The user input is converted to a vector representation using the same model that was used for the context chunks. Then a similarity search is executed against the vectorized chunks in the vector database. Top-<span class="math inline"><em>k</em></span> chunks from the search results in this step are then stuffed into the prompt as the context and the LLM is instructed to answer the user query using only the context.</p>
+<p>We will now create a retriever that can query an input text and retrieve the top<span class="math inline"> − <em>k</em></span> documents that are most relevant from the vector store.</p>
+<ul>
+<li>Under the hood, a similarity score is computed between the embedded query and all the chunks in the database</li>
+<li>The top <span class="math inline"><em>k</em></span> chunks with the highest similarity scores are then returned.</li>
+</ul>
+<div class="sourceCode" id="cb71"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true"></a>retriever <span class="op">=</span> vectorstore.as_retriever( <span class="co">#Converting the Chroma vector store into a retriever for querying.</span></span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true"></a>    search_type<span class="op">=</span><span class="st">&#39;similarity&#39;</span>, <span class="co">#Specifying that retrieval is based on cosine similarity</span></span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true"></a>    search_kwargs<span class="op">=</span>{<span class="st">&#39;k&#39;</span>: <span class="dv">3</span>} <span class="co">#Retrieving the top 3 most similar documents for a given query.</span></span>
+<span id="cb71-4"><a href="#cb71-4" aria-hidden="true"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb72"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true"></a>user_input <span class="op">=</span> <span class="st">&#39;What are the symptoms of migraine?&#39;</span></span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true"></a>rel_docs <span class="op">=</span> retriever.get_relevant_documents(user_input)</span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true"></a><span class="bu">print</span>(rel_docs)</span></code></pre></div>
+<pre><code>[Document(page_content=&#39;are less common than visual auras. Some patients have an aura with little or no headache.\nHeadache varies from moderate to severe, and attacks last from 4 hours to several days, typically\nresolving with sleep. The pain is often unilateral but may be bilateral, most often in a frontotemporal\ndistribution, and is typically described as pulsating or throbbing.\nMigraine is more than a headache. Associated symptoms such as nausea (and occasionally vomiting),\nphotophobia, sonophobia, and osmophobia are prominent. Patients report difficulty concentrating during\nattacks. Routine physical activity usually aggravates migraine headache; this effect, plus the photophobia\nand sonophobia, encourages most patients to lie in a dark, quiet room during attacks. Severe attacks canThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition\nChapter 178. Headache\n1886rajasekar.t7@gmail.com\nEB3R42OHCV\nThis file is meant for personal use by rajasekar.t7@gmail.com only.\nSharing or publishing the contents in part or full is liable for legal action.&#39;, metadata={&#39;page&#39;: 1895, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;}), Document(page_content=&#39;age 50. Studies show familial aggregation of migraine.\nPathophysiology\nMigraine is thought to be a neurovascular pain syndrome with altered central neuronal processing\n(activation of brain stem nuclei, cortical hyperexcitability, and spreading cortical depression) and\ninvolvement of the trigeminovascular system (triggering neuropeptide release, which causes painful\ninflammation in cranial vessels and the dura mater).\nMany potential migraine triggers have been identified; they include the following:\n• Drinking red wine\n• Skipping meals\n• Excessive afferent stimuli (eg, flashing lights, strong odors)\n• Weather changes\n• Sleep deprivation\n• Stress\n• Hormonal factors\nHead trauma, neck pain, or temporomandibular joint dysfunction sometimes triggers or exacerbates\nmigraine.\nFluctuating estrogen levels are a potent migraine trigger. Many women have onset of migraine at\nmenarche, severe attacks during menstruation (menstrual migraine), and worsening during menopause.\nFor most women, migraines remit during pregnancy (but sometimes they worsen during the 1st or 2nd\ntrimester). Oral contraceptives and other hormone therapy occasionally trigger or worsen migraine and\nhave been associated with stroke in women who have migraine with aura.\nA rare subtype of migraine called familial hemiplegic migraine is associated with genetic defects on\nchromosomes 1, 2, and 19. The role of genes in the more common forms of migraine is under study.\nSymptoms and Signs\nOften, attacks are heralded by a prodrome (a sensation that a migraine is beginning), which may include\nmood changes, loss of appetite, nausea, or a combination.\nAn aura precedes attacks in about 25% of patients. Auras are temporary neurologic disturbances that can\naffect sensation, balance, muscle coordination, speech, or vision; they last minutes to an hour. The aura\nmay persist after headache onset. Most commonly, auras involve visual symptoms (fortification spectra\n—eg, binocular flashes, arcs of scintillating lights, bright zigzags, scotomata). Paresthesias and\nnumbness (typically starting in one hand and marching to the ipsilateral arm and face), speech\ndisturbances, and transient brain stem dysfunction (causing, eg, ataxia, confusion or even obtundation)&#39;, metadata={&#39;page&#39;: 1895, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;}), Document(page_content=&#39;be incapacitating, disrupting family and work life.\nAttacks vary significantly in frequency and severity. Many patients have several types of headache,\nincluding milder attacks without nausea or photophobia; they may resemble tension-type headache but\nare a forme fruste of migraine.\nChronic migraines:\n Patients with episodic migraine can develop chronic migraine. These patients have\nheadaches ≥ 15 days/mo. This headache disorder used to be called combination or mixed headache\nbecause it had features of migraine and tension-type headache. These headaches often develop in\npatients who overuse drugs for acute treatment of headaches.\nOther symptoms:\n Other, rare forms of migraine can cause other symptoms. Basilar artery migraine\ncauses combinations of vertigo, ataxia, visual field loss, sensory disturbances, focal weakness, and\naltered level of consciousness. Hemiplegic migraine, which may be sporadic or familial, causes unilateral\nweakness.\nDiagnosis\n• Clinical evaluation\nDiagnosis is based on characteristic symptoms and a normal physical examination, which includes a\nthorough neurologic examination.\nRed flag findings include the following:\n• Pain that reaches peak intensity within a few seconds or less (thunderclap headache)\n• Onset after age 50\n• Headaches that increase in intensity or frequency for weeks or longer\n• History of cancer (brain metastases) or an immunosuppressive disorder (eg, HIV infection, AIDS)\n• Fever, meningismus, altered mental status, or a combination\n• Persistent focal neurologic deficits\n• Papilledema\n• A clear change in an established headache pattern\nPatients with characteristic symptoms and no red flag findings do not require testing. Patients with red\nflag findings often require brain imaging and sometimes lumbar puncture.\nCommon diagnostic errors include the following:\n• Not realizing that migraine often causes bilateral pain and is not always described as throbbing\n• Misdiagnosing migraine as sinus headache or eyestrain because of autonomic and visual symptoms of\nmigraine\n• Assuming that any headache in patients known to have migraine represents another migraine attack—a\nthunderclap headache or a change in the previous headache pattern may indicate a new, potentially\nserious disorder\n• Mistaking migraine with aura for a transient ischemic attack, especially when the aura occurs without\nheadache, in older peopleThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition\nChapter 178. Headache&#39;, metadata={&#39;page&#39;: 1896, &#39;source&#39;: &#39;/content/drive/My Drive/Colab Notebooks/NLP_Project/medical_diagnosis_manual.pdf&#39;})]</code></pre>
+<h3 id="system-and-user-prompt-template"><strong>System and User Prompt Template</strong></h3>
+<div class="sourceCode" id="cb74"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true"></a><span class="co"># System message instructing the LLM to only answer using Merck Manual 19th Edition</span></span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true"></a>qna_system_message <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb74-3"><a href="#cb74-3" aria-hidden="true"></a><span class="st">You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.</span></span>
+<span id="cb74-4"><a href="#cb74-4" aria-hidden="true"></a><span class="st">Use the context provided to find accurate and reliable answers.</span></span>
+<span id="cb74-5"><a href="#cb74-5" aria-hidden="true"></a><span class="st">If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.</span></span>
+<span id="cb74-6"><a href="#cb74-6" aria-hidden="true"></a><span class="st">Do not mention the context or the Merck Manual in your final answer.</span></span>
+<span id="cb74-7"><a href="#cb74-7" aria-hidden="true"></a><span class="st">&quot;&quot;&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb75"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true"></a><span class="co"># Template for formatting the user&#39;s input with context from the Merck Manual, 19th Edition and the actual medical question.</span></span>
+<span id="cb75-2"><a href="#cb75-2" aria-hidden="true"></a>qna_user_message_template <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb75-3"><a href="#cb75-3" aria-hidden="true"></a><span class="st">###Context</span></span>
+<span id="cb75-4"><a href="#cb75-4" aria-hidden="true"></a><span class="st">The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:</span></span>
+<span id="cb75-5"><a href="#cb75-5" aria-hidden="true"></a><span class="sc">{context}</span></span>
+<span id="cb75-6"><a href="#cb75-6" aria-hidden="true"></a></span>
+<span id="cb75-7"><a href="#cb75-7" aria-hidden="true"></a><span class="st">###Question</span></span>
+<span id="cb75-8"><a href="#cb75-8" aria-hidden="true"></a><span class="sc">{question}</span></span>
+<span id="cb75-9"><a href="#cb75-9" aria-hidden="true"></a><span class="st">&quot;&quot;&quot;</span></span></code></pre></div>
+<h4 id="response-function-1">Response Function</h4>
+<div class="sourceCode" id="cb76"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true"></a><span class="kw">def</span> generate_rag_response(user_input,ret,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">128</span>,temperature<span class="op">=</span><span class="dv">0</span>,top_p<span class="op">=</span><span class="fl">0.95</span>,top_k<span class="op">=</span><span class="dv">50</span>):</span>
+<span id="cb76-2"><a href="#cb76-2" aria-hidden="true"></a>    <span class="kw">global</span> qna_system_message,qna_user_message_template</span>
+<span id="cb76-3"><a href="#cb76-3" aria-hidden="true"></a>    <span class="co"># Retrieve relevant document chunks</span></span>
+<span id="cb76-4"><a href="#cb76-4" aria-hidden="true"></a>    relevant_document_chunks <span class="op">=</span> ret.get_relevant_documents(query<span class="op">=</span>user_input,k<span class="op">=</span>k)</span>
+<span id="cb76-5"><a href="#cb76-5" aria-hidden="true"></a>    context_list <span class="op">=</span> [d.page_content <span class="cf">for</span> d <span class="kw">in</span> relevant_document_chunks]</span>
+<span id="cb76-6"><a href="#cb76-6" aria-hidden="true"></a></span>
+<span id="cb76-7"><a href="#cb76-7" aria-hidden="true"></a>    <span class="co"># Combine document chunks into a single context</span></span>
+<span id="cb76-8"><a href="#cb76-8" aria-hidden="true"></a>    context_for_query <span class="op">=</span> <span class="st">&quot;. &quot;</span>.join(context_list)</span>
+<span id="cb76-9"><a href="#cb76-9" aria-hidden="true"></a></span>
+<span id="cb76-10"><a href="#cb76-10" aria-hidden="true"></a>    user_message <span class="op">=</span> qna_user_message_template.replace(<span class="st">&#39;</span><span class="sc">{context}</span><span class="st">&#39;</span>, context_for_query)</span>
+<span id="cb76-11"><a href="#cb76-11" aria-hidden="true"></a>    user_message <span class="op">=</span> user_message.replace(<span class="st">&#39;</span><span class="sc">{question}</span><span class="st">&#39;</span>, user_input)</span>
+<span id="cb76-12"><a href="#cb76-12" aria-hidden="true"></a></span>
+<span id="cb76-13"><a href="#cb76-13" aria-hidden="true"></a>    prompt <span class="op">=</span> qna_system_message <span class="op">+</span> <span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span> <span class="op">+</span> user_message</span>
+<span id="cb76-14"><a href="#cb76-14" aria-hidden="true"></a></span>
+<span id="cb76-15"><a href="#cb76-15" aria-hidden="true"></a>    <span class="co"># Generate the response</span></span>
+<span id="cb76-16"><a href="#cb76-16" aria-hidden="true"></a>    <span class="cf">try</span>:</span>
+<span id="cb76-17"><a href="#cb76-17" aria-hidden="true"></a>        response <span class="op">=</span> llm(</span>
+<span id="cb76-18"><a href="#cb76-18" aria-hidden="true"></a>                  prompt<span class="op">=</span>prompt,</span>
+<span id="cb76-19"><a href="#cb76-19" aria-hidden="true"></a>                  max_tokens<span class="op">=</span>max_tokens,</span>
+<span id="cb76-20"><a href="#cb76-20" aria-hidden="true"></a>                  temperature<span class="op">=</span>temperature,</span>
+<span id="cb76-21"><a href="#cb76-21" aria-hidden="true"></a>                  top_p<span class="op">=</span>top_p,</span>
+<span id="cb76-22"><a href="#cb76-22" aria-hidden="true"></a>                  top_k<span class="op">=</span>top_k</span>
+<span id="cb76-23"><a href="#cb76-23" aria-hidden="true"></a>                  )</span>
+<span id="cb76-24"><a href="#cb76-24" aria-hidden="true"></a></span>
+<span id="cb76-25"><a href="#cb76-25" aria-hidden="true"></a>        <span class="co"># Extract and print the model&#39;s response</span></span>
+<span id="cb76-26"><a href="#cb76-26" aria-hidden="true"></a>        response <span class="op">=</span> response[<span class="st">&#39;choices&#39;</span>][<span class="dv">0</span>][<span class="st">&#39;text&#39;</span>].strip()</span>
+<span id="cb76-27"><a href="#cb76-27" aria-hidden="true"></a>    <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb76-28"><a href="#cb76-28" aria-hidden="true"></a>        response <span class="op">=</span> <span class="ss">f&#39;Sorry, I encountered the following error: </span><span class="ch">\n</span><span class="ss"> </span><span class="sc">{e}</span><span class="ss">&#39;</span></span>
+<span id="cb76-29"><a href="#cb76-29" aria-hidden="true"></a></span>
+<span id="cb76-30"><a href="#cb76-30" aria-hidden="true"></a>    <span class="cf">return</span> response</span></code></pre></div>
+<h3 id="qa-with-rag"><strong>Q&amp;A with RAG</strong></h3>
+<h5 id="basic-parameter">Basic Parameter</h5>
+<div class="sourceCode" id="cb77"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true"></a>user_input1 <span class="op">=</span> <span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span></span>
+<span id="cb77-2"><a href="#cb77-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input1,retriever))</span></code></pre></div>
+<pre><code>###Answer
+The protocol involves administering broad-spectrum antibiotics such as gentamicin or tobramycin, along with a third-generation cephalosporin, ceftazidime, or a fluoroquinolone. Vancomycin should be added if resistant staphylococci or enterococci are suspected. If there is an abdominal source, a drug effective against anaerobes should be included. Culture and sensitivity results should be used to adjust the antibiotic regimen accordingly. Antibiotics should be continued for at</code></pre>
+<h5 id="removing-chunk-overlap">Removing chunk overlap</h5>
+<div class="sourceCode" id="cb79"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true"></a><span class="co"># Initializing a RecursiveCharacterTextSplitter to split the text into manageable chunks for embedding and retrieval</span></span>
+<span id="cb79-2"><a href="#cb79-2" aria-hidden="true"></a>text_splitter1 <span class="op">=</span> RecursiveCharacterTextSplitter.from_tiktoken_encoder(</span>
+<span id="cb79-3"><a href="#cb79-3" aria-hidden="true"></a>    encoding_name<span class="op">=</span><span class="st">&#39;cl100k_base&#39;</span>,</span>
+<span id="cb79-4"><a href="#cb79-4" aria-hidden="true"></a>    chunk_size<span class="op">=</span><span class="dv">512</span>,</span>
+<span id="cb79-5"><a href="#cb79-5" aria-hidden="true"></a>    chunk_overlap<span class="op">=</span> <span class="dv">0</span>,</span>
+<span id="cb79-6"><a href="#cb79-6" aria-hidden="true"></a>    is_separator_regex<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb79-7"><a href="#cb79-7" aria-hidden="true"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb80"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true"></a><span class="co">#loading the PDF document, extracting its text, and splitting it into smaller chunks</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true"></a>document_chunks1 <span class="op">=</span> pdf_loader.load_and_split(text_splitter1)</span></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true"></a><span class="bu">len</span>(document_chunks1)</span></code></pre></div>
+<pre><code>8522</code></pre>
+<div class="sourceCode" id="cb83"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true"></a><span class="co"># Generating embedding for the first document chunk</span></span>
+<span id="cb83-2"><a href="#cb83-2" aria-hidden="true"></a>embedding_1 <span class="op">=</span> embedding_model.embed_query(document_chunks1[<span class="dv">0</span>].page_content)</span>
+<span id="cb83-3"><a href="#cb83-3" aria-hidden="true"></a><span class="co"># Generating embedding for the second document chunk</span></span>
+<span id="cb83-4"><a href="#cb83-4" aria-hidden="true"></a>embedding_2 <span class="op">=</span> embedding_model.embed_query(document_chunks1[<span class="dv">1</span>].page_content)</span></code></pre></div>
+<div class="sourceCode" id="cb84"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true"></a>vectorstore1 <span class="op">=</span> Chroma.from_documents( <span class="co">#creating a Chroma vector store from a set of document chunks.</span></span>
+<span id="cb84-2"><a href="#cb84-2" aria-hidden="true"></a>    document_chunks1, <span class="co">#creating a list of text chunks that will be converted into embeddings..</span></span>
+<span id="cb84-3"><a href="#cb84-3" aria-hidden="true"></a>    embedding_model, <span class="co">#model responsible for embedding the document chunks into vector representations</span></span>
+<span id="cb84-4"><a href="#cb84-4" aria-hidden="true"></a>    persist_directory<span class="op">=</span>out_dir <span class="co">#name of the collection in the Chroma database</span></span>
+<span id="cb84-5"><a href="#cb84-5" aria-hidden="true"></a>)</span></code></pre></div>
+<pre><code>ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given</code></pre>
+<div class="sourceCode" id="cb86"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true"></a> vectorstore1 <span class="op">=</span> Chroma(persist_directory<span class="op">=</span>out_dir,embedding_function<span class="op">=</span>embedding_model)</span></code></pre></div>
+<pre><code>ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given</code></pre>
+<div class="sourceCode" id="cb88"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true"></a><span class="bu">print</span>(vectorstore1.embeddings)</span></code></pre></div>
+<pre><code>client=SentenceTransformer(
+  (0): Transformer({&#39;max_seq_length&#39;: 512, &#39;do_lower_case&#39;: False}) with Transformer model: BertModel 
+  (1): Pooling({&#39;word_embedding_dimension&#39;: 1024, &#39;pooling_mode_cls_token&#39;: False, &#39;pooling_mode_mean_tokens&#39;: True, &#39;pooling_mode_max_tokens&#39;: False, &#39;pooling_mode_mean_sqrt_len_tokens&#39;: False, &#39;pooling_mode_weightedmean_tokens&#39;: False, &#39;pooling_mode_lasttoken&#39;: False})
+  (2): Normalize()
+) model_name=&#39;thenlper/gte-large&#39; cache_folder=None model_kwargs={} encode_kwargs={} multi_process=False</code></pre>
+<div class="sourceCode" id="cb90"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true"></a>retriever1 <span class="op">=</span> vectorstore1.as_retriever( <span class="co">#Converting the Chroma vector store into a retriever for querying.</span></span>
+<span id="cb90-2"><a href="#cb90-2" aria-hidden="true"></a>    search_type<span class="op">=</span><span class="st">&#39;similarity&#39;</span>, <span class="co">#Specifying that retrieval is based on cosine similarity</span></span>
+<span id="cb90-3"><a href="#cb90-3" aria-hidden="true"></a>    search_kwargs<span class="op">=</span>{<span class="st">&#39;k&#39;</span>: <span class="dv">3</span>} <span class="co">#Retrieving the top 3 most similar documents for a given query.</span></span>
+<span id="cb90-4"><a href="#cb90-4" aria-hidden="true"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb91"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb91-1"><a href="#cb91-1" aria-hidden="true"></a>user_input1 <span class="op">=</span> <span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span></span>
+<span id="cb91-2"><a href="#cb91-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input1,retriever1))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Based on the context provided, the following are the steps for managing sepsis in a critical care unit:
+1. Obtain specimens of blood, body fluids, and wound sites for Gram stain and culture before administering parenteral antibiotics.
+2. Start very prompt empiric therapy immediately after suspecting sepsis.
+3. Select an antibiotic regimen based on the suspected source, clinical setting, knowledge or suspicion of causative organisms and sensitivity patterns common to that specific inpatient unit, and previous culture results.
+4. Consider adding vancomycin if</code></pre>
+<h5 id="observation-5">Observation</h5>
+<p>Removing chunk overlap did not change the answers in this case, probably because the relavant information for the question was already contained within a single chunk.</p>
+<p>Removing chunk overlap might affect the answer if the question required information that spanned across multiple chunks from different parts of the text.</p>
+<h5 id="basic-parameter-1">Basic Parameter</h5>
+<div class="sourceCode" id="cb93"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true"></a>user_input2 <span class="op">=</span> <span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span></span>
+<span id="cb93-2"><a href="#cb93-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input2,retriever))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The common symptoms for appendicitis include abdominal pain, anorexia (loss of appetite), and abdominal tenderness. Appendicitis cannot be cured via medicine alone as it requires surgical removal of the inflamed appendix. The treatment is called appendectomy, which can be performed either open or laparoscopically. Antibiotics are also administered before the surgery to prevent infection and reduce the risk of complications. If the appendix has already ruptured, antibiotics should be continued until the patient&#39;s temperature and white blood cell count have normalized. In some</code></pre>
+<h5 id="fine-tuning---retreiver-parameters">Fine Tuning - Retreiver Parameters</h5>
+<div class="sourceCode" id="cb95"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true"></a>retriever2 <span class="op">=</span> vectorstore.as_retriever( <span class="co">#Converting the Chroma vector store into a retriever for querying.</span></span>
+<span id="cb95-2"><a href="#cb95-2" aria-hidden="true"></a>    search_type<span class="op">=</span><span class="st">&#39;similarity&#39;</span>, <span class="co">#Specifying that retrieval is based on cosine similarity</span></span>
+<span id="cb95-3"><a href="#cb95-3" aria-hidden="true"></a>    search_kwargs<span class="op">=</span>{<span class="st">&#39;k&#39;</span>: <span class="dv">2</span>} <span class="co">#Retrieving the top 2 most similar documents for a given query.</span></span>
+<span id="cb95-4"><a href="#cb95-4" aria-hidden="true"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb96"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true"></a>user_input2 <span class="op">=</span> <span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span></span>
+<span id="cb96-2"><a href="#cb96-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input2,retriever2))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The common symptoms for appendicitis include abdominal pain, anorexia (loss of appetite), and abdominal tenderness. Appendicitis cannot be cured via medicine alone; the standard treatment is surgical removal of the appendix through open or laparoscopic appendectomy. This procedure should be preceded by IV antibiotics to prevent infection spread. If the appendix is perforated, antibiotics should be continued until the patient&#39;s temperature and WBC count have normalized. In cases where a large inflammatory mass is found involving the appendix, terminal ile</code></pre>
+<h5 id="observation-6">Observation</h5>
+<p>Answer 1, with k=3, is slightly more detailed and includes examples of cases (like when surgery is impossible).</p>
+<p>Answer 2, with k=2, is slightly shorter and cuts off earlier, suggesting that retrieving more chunks (k=3) provided additional helpful context for a more complete answer.</p>
+<h5 id="basic-parameter-2">Basic Parameter</h5>
+<div class="sourceCode" id="cb98"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb98-1"><a href="#cb98-1" aria-hidden="true"></a>user_input3 <span class="op">=</span> <span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span></span>
+<span id="cb98-2"><a href="#cb98-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input3, retriever))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Based on the context provided, the possible causes of sudden patchy hair loss include alopecia areata, telogen effluvium, anagen effluvium, and other underlying disorders. The effective treatments or solutions for addressing this condition depend on the underlying cause. For alopecia areata, various treatment options exist including topical, intralesional, or systemic corticosteroids, topical minoxidil, topical anthralin, topical immunotherapy (diphencyprone or squaric acid dibutylester), or psoralen plus ul</code></pre>
+<h5 id="fine-tuning-temp0.7">Fine tuning temp=0.7</h5>
+<div class="sourceCode" id="cb100"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true"></a>user_input3 <span class="op">=</span> <span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span></span>
+<span id="cb100-2"><a href="#cb100-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input3, retriever, temperature<span class="op">=</span><span class="fl">0.7</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+The Merck Manual mentions alopecia areata as a cause of sudden patchy hair loss. It is an autoimmune disorder that affects genetically susceptible individuals exposed to unclear environmental triggers. The treatment options for alopecia areata include topical, intralesional, or systemic corticosteroids, topical minoxidil, topical anthralin, topical immunotherapy (diphencyprone or squaric acid dibutylester), or psoralen plus ultraviolet A (PUVA). Hormonal modul</code></pre>
+<h5 id="observation-7">Observation</h5>
+<p>Answer 1, with temperature = 0, is more precise and structured.</p>
+<p>Answer 2, with temperature = 0.7, introduces a bit more variability, with slight changes in wording, reflecting the increased randomness from the higher temperature.</p>
+<h5 id="basic-parameter-3">Basic Parameter</h5>
+<div class="sourceCode" id="cb102"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true"></a>user_input4 <span class="op">=</span> <span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span></span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input4,retriever))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+###Answer
+The initial treatment includes ensuring a reliable airway and maintaining adequate ventilation, oxygenation, and blood pressure. Surgery may be needed in patients with more severe injuries to place monitors to track and treat intracranial pressure, decompress the brain if intracranial pressure is increased, or remove intracranial hematomas. In the first few days after the injury, maintaining adequate brain perfusion and oxygenation and preventing complications of altered sensorium are important. Subsequently, many patients require rehabilitation. There is no specific treatment for a physical injury to brain tissue, but supportive</code></pre>
+<h5 id="top_p0.8">top_p=0.8</h5>
+<div class="sourceCode" id="cb104"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb104-1"><a href="#cb104-1" aria-hidden="true"></a>user_input4 <span class="op">=</span> <span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span></span>
+<span id="cb104-2"><a href="#cb104-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input4, retriever, top_p<span class="op">=</span><span class="fl">0.8</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+###Answer
+The initial treatment includes ensuring a reliable airway and maintaining adequate ventilation, oxygenation, and blood pressure. Surgery may be needed in patients with more severe injuries to place monitors to track and treat intracranial pressure, decompress the brain if intracranial pressure is increased, or remove intracranial hematomas. In the first few days after the injury, maintaining adequate brain perfusion and oxygenation and preventing complications of altered sensorium are important. Subsequently, many patients require rehabilitation. There is no specific treatment for a physical injury to brain tissue, but supportive</code></pre>
+<h5 id="observation-8">Observation</h5>
+<p>Answer 1 with Top_p = 0.95 means the model will consider the top 95% probability mass of the next token and select from that pool. This makes the answer generated more focused, coherent responses because it prioritizes more likely words and phrases.</p>
+<p>Answer 2 with Top_p = 0.8 means the model restricts the token selection to only the top 80% of the probability distribution, including less likely but more diverse options.</p>
+<p>Thus, in Answer 1, the model focuses more on the main facts (like supportive care and rehab) without adding unnecessary or unrelated details. In Answer 2, the model explores a wider range of possibilities, leading to additional information about severe cases, surgery, and treatment phases.</p>
+<h5 id="basic-parameter-4">Basic Parameter</h5>
+<div class="sourceCode" id="cb106"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb106-1"><a href="#cb106-1" aria-hidden="true"></a>user_input5 <span class="op">=</span> <span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span></span>
+<span id="cb106-2"><a href="#cb106-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input5,retriever))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Based on the context provided, the following are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip:
+1. Antibiotics may be given as early as possible to prevent infection. The first dose may be given parenterally.
+2. The wound should be immobilized using splints or a cast, depending on the severity of the injury and the length of the recovery period. Joints proximal and distal to the injury should also be immobilized.
+3. The injured limb should be elevated above heart</code></pre>
+<h5 id="top_k25">top_k=25</h5>
+<div class="sourceCode" id="cb108"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true"></a>user_input5 <span class="op">=</span> <span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span></span>
+<span id="cb108-2"><a href="#cb108-2" aria-hidden="true"></a><span class="bu">print</span>(generate_rag_response(user_input5,retriever, top_k<span class="op">=</span><span class="dv">25</span>))</span></code></pre></div>
+<pre><code>Llama.generate: prefix-match hit
+
+
+Based on the context provided, the following are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip:
+1. Antibiotics may be given as early as possible to prevent infection. The first dose may be given parenterally.
+2. The wound should be immobilized using splints or a cast, depending on the severity of the injury and the length of the recovery period. Joints proximal and distal to the injury should also be immobilized.
+3. The injured limb should be elevated above heart</code></pre>
+<h5 id="observation-9">Observation</h5>
+<p>More or less it is the same output there is no much difference</p>
+<h2 id="output-evaluation"><strong>Output Evaluation</strong></h2>
+<h3 id="rating-system">Rating system</h3>
+<div class="sourceCode" id="cb110"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb110-1"><a href="#cb110-1" aria-hidden="true"></a>groundedness_rater_system_message <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb110-2"><a href="#cb110-2" aria-hidden="true"></a></span>
+<span id="cb110-3"><a href="#cb110-3" aria-hidden="true"></a><span class="st">You will be presented a ###Question, ###Context used by the AI system and AI generated ###Answer.</span></span>
+<span id="cb110-4"><a href="#cb110-4" aria-hidden="true"></a></span>
+<span id="cb110-5"><a href="#cb110-5" aria-hidden="true"></a><span class="st">Your task is to judge the extent to which the ###Answer is derived from ###Context.</span></span>
+<span id="cb110-6"><a href="#cb110-6" aria-hidden="true"></a></span>
+<span id="cb110-7"><a href="#cb110-7" aria-hidden="true"></a><span class="st">Rate it 1 - if The ###Answer is not derived from the ###Context at all</span></span>
+<span id="cb110-8"><a href="#cb110-8" aria-hidden="true"></a><span class="st">Rate it 2 - if The ###Answer is derived from the ###Context only to a limited extent</span></span>
+<span id="cb110-9"><a href="#cb110-9" aria-hidden="true"></a><span class="st">Rate it 3 - if The ###Answer is derived from ###Context to a good extent</span></span>
+<span id="cb110-10"><a href="#cb110-10" aria-hidden="true"></a><span class="st">Rate it 4 - if The ###Answer is derived from ###Context mostly</span></span>
+<span id="cb110-11"><a href="#cb110-11" aria-hidden="true"></a><span class="st">Rate it 5 - if The ###Answer is is derived from ###Context completely</span></span>
+<span id="cb110-12"><a href="#cb110-12" aria-hidden="true"></a></span>
+<span id="cb110-13"><a href="#cb110-13" aria-hidden="true"></a><span class="st">Please note: Make sure you give a single overall rating in the range of 1 to 5 along with an overall explanation.</span></span>
+<span id="cb110-14"><a href="#cb110-14" aria-hidden="true"></a></span>
+<span id="cb110-15"><a href="#cb110-15" aria-hidden="true"></a><span class="st">&quot;&quot;&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb111"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true"></a>relevance_rater_system_message <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb111-2"><a href="#cb111-2" aria-hidden="true"></a></span>
+<span id="cb111-3"><a href="#cb111-3" aria-hidden="true"></a><span class="st">You will be presented with a ###Question, the ###Context used by the AI system to generate a response, and the AI-generated ###Answer.</span></span>
+<span id="cb111-4"><a href="#cb111-4" aria-hidden="true"></a></span>
+<span id="cb111-5"><a href="#cb111-5" aria-hidden="true"></a><span class="st">Your task is to judge the extent to which the ###Answer is relevant to the ###Question, considering whether it directly addresses the key aspects of the ###Question based on the provided ###Context.</span></span>
+<span id="cb111-6"><a href="#cb111-6" aria-hidden="true"></a></span>
+<span id="cb111-7"><a href="#cb111-7" aria-hidden="true"></a><span class="st">Rate the relevance as follows:</span></span>
+<span id="cb111-8"><a href="#cb111-8" aria-hidden="true"></a><span class="st">- Rate 1 – The ###Answer is not relevant to the ###Question at all.</span></span>
+<span id="cb111-9"><a href="#cb111-9" aria-hidden="true"></a><span class="st">- Rate 2 – The ###Answer is only slightly relevant to the **###Question**, missing key aspects.</span></span>
+<span id="cb111-10"><a href="#cb111-10" aria-hidden="true"></a><span class="st">- Rate 3 – The ###Answer is moderately relevant, addressing some parts of the **###Question** but leaving out important details.</span></span>
+<span id="cb111-11"><a href="#cb111-11" aria-hidden="true"></a><span class="st">- Rate 4 – The ###Answer is mostly relevant, covering key aspects but with minor gaps.</span></span>
+<span id="cb111-12"><a href="#cb111-12" aria-hidden="true"></a><span class="st">- Rate 5 – The ###Answer is fully relevant, directly answering all important aspects of the **###Question** with appropriate details from the **###Context**.</span></span>
+<span id="cb111-13"><a href="#cb111-13" aria-hidden="true"></a></span>
+<span id="cb111-14"><a href="#cb111-14" aria-hidden="true"></a><span class="st">Note: Provide a single overall rating in the range of 1 to 5, along with a brief explanation of why you assigned that score.</span></span>
+<span id="cb111-15"><a href="#cb111-15" aria-hidden="true"></a><span class="st">&quot;&quot;&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb112"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb112-1"><a href="#cb112-1" aria-hidden="true"></a>user_message_template <span class="op">=</span> <span class="st">&quot;&quot;&quot;</span></span>
+<span id="cb112-2"><a href="#cb112-2" aria-hidden="true"></a><span class="st">###Question</span></span>
+<span id="cb112-3"><a href="#cb112-3" aria-hidden="true"></a><span class="sc">{question}</span></span>
+<span id="cb112-4"><a href="#cb112-4" aria-hidden="true"></a></span>
+<span id="cb112-5"><a href="#cb112-5" aria-hidden="true"></a><span class="st">###Context</span></span>
+<span id="cb112-6"><a href="#cb112-6" aria-hidden="true"></a><span class="sc">{context}</span></span>
+<span id="cb112-7"><a href="#cb112-7" aria-hidden="true"></a></span>
+<span id="cb112-8"><a href="#cb112-8" aria-hidden="true"></a><span class="st">###Answer</span></span>
+<span id="cb112-9"><a href="#cb112-9" aria-hidden="true"></a><span class="sc">{answer}</span></span>
+<span id="cb112-10"><a href="#cb112-10" aria-hidden="true"></a><span class="st">&quot;&quot;&quot;</span></span></code></pre></div>
+<h3 id="evaluation-function">Evaluation function</h3>
+<div class="sourceCode" id="cb113"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb113-1"><a href="#cb113-1" aria-hidden="true"></a><span class="kw">def</span> generate_ground_relevance_response(user_input,ret,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">128</span>,temperature<span class="op">=</span><span class="dv">0</span>,top_p<span class="op">=</span><span class="fl">0.95</span>,top_k<span class="op">=</span><span class="dv">50</span>):</span>
+<span id="cb113-2"><a href="#cb113-2" aria-hidden="true"></a>    <span class="kw">global</span> qna_system_message,qna_user_message_template</span>
+<span id="cb113-3"><a href="#cb113-3" aria-hidden="true"></a>    <span class="co"># Retrieve relevant document chunks</span></span>
+<span id="cb113-4"><a href="#cb113-4" aria-hidden="true"></a>    relevant_document_chunks <span class="op">=</span> ret.get_relevant_documents(query<span class="op">=</span>user_input,k<span class="op">=</span>k)</span>
+<span id="cb113-5"><a href="#cb113-5" aria-hidden="true"></a>    context_list <span class="op">=</span> [d.page_content <span class="cf">for</span> d <span class="kw">in</span> relevant_document_chunks]</span>
+<span id="cb113-6"><a href="#cb113-6" aria-hidden="true"></a>    context_for_query <span class="op">=</span> <span class="st">&quot;. &quot;</span>.join(context_list)</span>
+<span id="cb113-7"><a href="#cb113-7" aria-hidden="true"></a></span>
+<span id="cb113-8"><a href="#cb113-8" aria-hidden="true"></a>    user_message <span class="op">=</span> qna_user_message_template.replace(<span class="st">&#39;</span><span class="sc">{context}</span><span class="st">&#39;</span>, context_for_query)</span>
+<span id="cb113-9"><a href="#cb113-9" aria-hidden="true"></a>    user_message <span class="op">=</span> user_message.replace(<span class="st">&#39;</span><span class="sc">{question}</span><span class="st">&#39;</span>, user_input)</span>
+<span id="cb113-10"><a href="#cb113-10" aria-hidden="true"></a></span>
+<span id="cb113-11"><a href="#cb113-11" aria-hidden="true"></a>    prompt <span class="op">=</span> qna_system_message <span class="op">+</span> <span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span> <span class="op">+</span> user_message</span>
+<span id="cb113-12"><a href="#cb113-12" aria-hidden="true"></a></span>
+<span id="cb113-13"><a href="#cb113-13" aria-hidden="true"></a>    <span class="co"># Print the prompt to inspect its length</span></span>
+<span id="cb113-14"><a href="#cb113-14" aria-hidden="true"></a>    <span class="bu">print</span>(<span class="st">&quot;--- Generated Prompt ---&quot;</span>)</span>
+<span id="cb113-15"><a href="#cb113-15" aria-hidden="true"></a>    <span class="bu">print</span>(prompt)</span>
+<span id="cb113-16"><a href="#cb113-16" aria-hidden="true"></a>    <span class="bu">print</span>(<span class="st">&quot;--- End of Generated Prompt ---&quot;</span>)</span>
+<span id="cb113-17"><a href="#cb113-17" aria-hidden="true"></a></span>
+<span id="cb113-18"><a href="#cb113-18" aria-hidden="true"></a></span>
+<span id="cb113-19"><a href="#cb113-19" aria-hidden="true"></a>    <span class="co"># Generate the response</span></span>
+<span id="cb113-20"><a href="#cb113-20" aria-hidden="true"></a>    <span class="cf">try</span>:</span>
+<span id="cb113-21"><a href="#cb113-21" aria-hidden="true"></a>        response <span class="op">=</span> llm(</span>
+<span id="cb113-22"><a href="#cb113-22" aria-hidden="true"></a>                  prompt<span class="op">=</span>prompt,</span>
+<span id="cb113-23"><a href="#cb113-23" aria-hidden="true"></a>                  max_tokens<span class="op">=</span>max_tokens,</span>
+<span id="cb113-24"><a href="#cb113-24" aria-hidden="true"></a>                  temperature<span class="op">=</span>temperature,</span>
+<span id="cb113-25"><a href="#cb113-25" aria-hidden="true"></a>                  top_p<span class="op">=</span>top_p,</span>
+<span id="cb113-26"><a href="#cb113-26" aria-hidden="true"></a>                  top_k<span class="op">=</span>top_k</span>
+<span id="cb113-27"><a href="#cb113-27" aria-hidden="true"></a>                  )</span>
+<span id="cb113-28"><a href="#cb113-28" aria-hidden="true"></a></span>
+<span id="cb113-29"><a href="#cb113-29" aria-hidden="true"></a>        <span class="co"># Extract and print the model&#39;s response</span></span>
+<span id="cb113-30"><a href="#cb113-30" aria-hidden="true"></a>        answer <span class="op">=</span> response[<span class="st">&#39;choices&#39;</span>][<span class="dv">0</span>][<span class="st">&#39;text&#39;</span>].strip()</span>
+<span id="cb113-31"><a href="#cb113-31" aria-hidden="true"></a>    <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb113-32"><a href="#cb113-32" aria-hidden="true"></a>        answer <span class="op">=</span> <span class="ss">f&#39;Sorry, I encountered the following error: </span><span class="ch">\n</span><span class="ss"> </span><span class="sc">{e}</span><span class="ss">&#39;</span></span>
+<span id="cb113-33"><a href="#cb113-33" aria-hidden="true"></a></span>
+<span id="cb113-34"><a href="#cb113-34" aria-hidden="true"></a>    <span class="co"># Combine user_prompt and system_message to create the prompt for groundedness and relevance raters</span></span>
+<span id="cb113-35"><a href="#cb113-35" aria-hidden="true"></a>    groundedness_prompt <span class="op">=</span> <span class="ss">f&quot;&quot;&quot;[INST]</span><span class="sc">{</span>groundedness_rater_system_message<span class="sc">}</span><span class="ch">\n</span></span>
+<span id="cb113-36"><a href="#cb113-36" aria-hidden="true"></a><span class="ss">                </span><span class="sc">{</span><span class="st">&#39;user&#39;</span><span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>user_message_template<span class="sc">.</span><span class="bu">format</span>(context<span class="op">=</span>context_for_query, question<span class="op">=</span>user_input, answer<span class="op">=</span>answer)<span class="sc">}</span></span>
+<span id="cb113-37"><a href="#cb113-37" aria-hidden="true"></a><span class="ss">                [/INST]&quot;&quot;&quot;</span></span>
+<span id="cb113-38"><a href="#cb113-38" aria-hidden="true"></a></span>
+<span id="cb113-39"><a href="#cb113-39" aria-hidden="true"></a>    relevance_prompt <span class="op">=</span> <span class="ss">f&quot;&quot;&quot;[INST]</span><span class="sc">{</span>relevance_rater_system_message<span class="sc">}</span><span class="ch">\n</span></span>
+<span id="cb113-40"><a href="#cb113-40" aria-hidden="true"></a><span class="ss">                </span><span class="sc">{</span><span class="st">&#39;user&#39;</span><span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>user_message_template<span class="sc">.</span><span class="bu">format</span>(context<span class="op">=</span>context_for_query, question<span class="op">=</span>user_input, answer<span class="op">=</span>answer)<span class="sc">}</span></span>
+<span id="cb113-41"><a href="#cb113-41" aria-hidden="true"></a><span class="ss">                [/INST]&quot;&quot;&quot;</span></span>
+<span id="cb113-42"><a href="#cb113-42" aria-hidden="true"></a></span>
+<span id="cb113-43"><a href="#cb113-43" aria-hidden="true"></a>    response_1 <span class="op">=</span> llm(</span>
+<span id="cb113-44"><a href="#cb113-44" aria-hidden="true"></a>            prompt<span class="op">=</span>groundedness_prompt,</span>
+<span id="cb113-45"><a href="#cb113-45" aria-hidden="true"></a>            max_tokens<span class="op">=</span>max_tokens,</span>
+<span id="cb113-46"><a href="#cb113-46" aria-hidden="true"></a>            temperature<span class="op">=</span>temperature,</span>
+<span id="cb113-47"><a href="#cb113-47" aria-hidden="true"></a>            top_p<span class="op">=</span>top_p,</span>
+<span id="cb113-48"><a href="#cb113-48" aria-hidden="true"></a>            top_k<span class="op">=</span>top_k,</span>
+<span id="cb113-49"><a href="#cb113-49" aria-hidden="true"></a>            stop<span class="op">=</span>[<span class="st">&#39;INST&#39;</span>],</span>
+<span id="cb113-50"><a href="#cb113-50" aria-hidden="true"></a>            echo<span class="op">=</span><span class="va">False</span></span>
+<span id="cb113-51"><a href="#cb113-51" aria-hidden="true"></a>            )</span>
+<span id="cb113-52"><a href="#cb113-52" aria-hidden="true"></a></span>
+<span id="cb113-53"><a href="#cb113-53" aria-hidden="true"></a>    response_2 <span class="op">=</span> llm(</span>
+<span id="cb113-54"><a href="#cb113-54" aria-hidden="true"></a>            prompt<span class="op">=</span>relevance_prompt,</span>
+<span id="cb113-55"><a href="#cb113-55" aria-hidden="true"></a>            max_tokens<span class="op">=</span>max_tokens,</span>
+<span id="cb113-56"><a href="#cb113-56" aria-hidden="true"></a>            temperature<span class="op">=</span>temperature,</span>
+<span id="cb113-57"><a href="#cb113-57" aria-hidden="true"></a>            top_p<span class="op">=</span>top_p,</span>
+<span id="cb113-58"><a href="#cb113-58" aria-hidden="true"></a>            top_k<span class="op">=</span>top_k,</span>
+<span id="cb113-59"><a href="#cb113-59" aria-hidden="true"></a>            stop<span class="op">=</span>[<span class="st">&#39;INST&#39;</span>],</span>
+<span id="cb113-60"><a href="#cb113-60" aria-hidden="true"></a>            echo<span class="op">=</span><span class="va">False</span></span>
+<span id="cb113-61"><a href="#cb113-61" aria-hidden="true"></a>            )</span>
+<span id="cb113-62"><a href="#cb113-62" aria-hidden="true"></a></span>
+<span id="cb113-63"><a href="#cb113-63" aria-hidden="true"></a>    <span class="cf">return</span> response_1[<span class="st">&#39;choices&#39;</span>][<span class="dv">0</span>][<span class="st">&#39;text&#39;</span>],response_2[<span class="st">&#39;choices&#39;</span>][<span class="dv">0</span>][<span class="st">&#39;text&#39;</span>]</span></code></pre></div>
+<h3 id="evaluation">Evaluation</h3>
+<h4 id="query1">Query1</h4>
+<div class="sourceCode" id="cb114"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb114-1"><a href="#cb114-1" aria-hidden="true"></a>user_input1 <span class="op">=</span> <span class="st">&#39;What is the protocol for managing sepsis in a critical care unit?&#39;</span></span>
+<span id="cb114-2"><a href="#cb114-2" aria-hidden="true"></a>ground,rel <span class="op">=</span> generate_ground_relevance_response(user_input1,retriever2,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">350</span>)</span>
+<span id="cb114-3"><a href="#cb114-3" aria-hidden="true"></a></span>
+<span id="cb114-4"><a href="#cb114-4" aria-hidden="true"></a><span class="bu">print</span>(ground,end<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb114-5"><a href="#cb114-5" aria-hidden="true"></a><span class="bu">print</span>(rel)</span></code></pre></div>
+<pre><code>--- Generated Prompt ---
+
+You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.
+Use the context provided to find accurate and reliable answers.
+If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.
+Do not mention the context or the Merck Manual in your final answer.
+
+
+###Context
+The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:
+16 - Critical Care Medicine
+Chapter 222. Approach to the Critically Ill Patient
+Introduction
+Critical care medicine specializes in caring for the most seriously ill patients. These patients are best
+treated in an ICU staffed by experienced personnel. Some hospitals maintain separate units for special
+populations (eg, cardiac, surgical, neurologic, pediatric, or neonatal patients). ICUs have a high
+nurse:patient ratio to provide the necessary high intensity 
+of service, including treatment and monitoring
+of physiologic parameters.
+Supportive care for the ICU patient includes provision of adequate nutrition (see p. 
+21
+) and prevention of
+infection, stress ulcers and gastritis (see p. 
+131
+), and pulmonary embolism (see p. 
+1920
+). Because 15 to
+25% of patients admitted to ICUs die there, physicians should know how to minimize suffering and help
+dying patients maintain dignity (see p. 
+3480
+).
+Patient Monitoring and Testing
+Some monitoring is manual (ie, by direct observation and physical examination) and intermittent, with the
+frequency depending on the patient&#39;s illness. This monitoring usually includes measurement of vital signs
+(temperature, BP, pulse, and respiration rate), quantification of all fluid intake and output, and often daily
+weight. BP may be recorded by an automated sphygmomanometer; a transcutaneous sensor for pulse
+oximetry is used as well.
+Other monitoring is ongoing and continuous, provided by complex devices that require special training
+and experience to operate. Most such devices generate an alarm if certain physiologic parameters are
+exceeded. Every ICU should strictly follow protocols for investigating alarms.
+Blood Tests
+Although frequent blood draws can destroy veins, cause pain, and lead to anemia, ICU patients typically
+have routine daily blood tests to help detect problems early. Generally, patients need a daily set of
+electrolytes and a CBC. Patients with arrhythmias should also have Mg, phosphate, and Ca levels
+measured. Patients receiving TPN need weekly liver enzymes and coagulation profiles. Other tests (eg,
+blood culture for fever, CBC after a bleeding episode) are done as needed.
+Point-of-care testing uses miniaturized, highly automated devices to do certain blood tests at the patient&#39;s
+bedside or unit (particularly ICU, emergency department, and operating room). Commonly available tests. 16 - Critical Care Medicine
+Chapter 222. Approach to the Critically Ill Patient
+Introduction
+Critical care medicine specializes in caring for the most seriously ill patients. These patients are best
+treated in an ICU staffed by experienced personnel. Some hospitals maintain separate units for special
+populations (eg, cardiac, surgical, neurologic, pediatric, or neonatal patients). ICUs have a high
+nurse:patient ratio to provide the necessary high intensity 
+of service, including treatment and monitoring
+of physiologic parameters.
+Supportive care for the ICU patient includes provision of adequate nutrition (see p. 
+21
+) and prevention of
+infection, stress ulcers and gastritis (see p. 
+131
+), and pulmonary embolism (see p. 
+1920
+). Because 15 to
+25% of patients admitted to ICUs die there, physicians should know how to minimize suffering and help
+dying patients maintain dignity (see p. 
+3480
+).
+Patient Monitoring and Testing
+Some monitoring is manual (ie, by direct observation and physical examination) and intermittent, with the
+frequency depending on the patient&#39;s illness. This monitoring usually includes measurement of vital signs
+(temperature, BP, pulse, and respiration rate), quantification of all fluid intake and output, and often daily
+weight. BP may be recorded by an automated sphygmomanometer; a transcutaneous sensor for pulse
+oximetry is used as well.
+Other monitoring is ongoing and continuous, provided by complex devices that require special training
+and experience to operate. Most such devices generate an alarm if certain physiologic parameters are
+exceeded. Every ICU should strictly follow protocols for investigating alarms.
+Blood Tests
+Although frequent blood draws can destroy veins, cause pain, and lead to anemia, ICU patients typically
+have routine daily blood tests to help detect problems early. Generally, patients need a daily set of
+electrolytes and a CBC. Patients with arrhythmias should also have Mg, phosphate, and Ca levels
+measured. Patients receiving TPN need weekly liver enzymes and coagulation profiles. Other tests (eg,
+blood culture for fever, CBC after a bleeding episode) are done as needed.
+Point-of-care testing uses miniaturized, highly automated devices to do certain blood tests at the patient&#39;s
+bedside or unit (particularly ICU, emergency department, and operating room). Commonly available tests
+
+###Question
+What is the protocol for managing sepsis in a critical care unit?
+
+--- End of Generated Prompt ---
+
+
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+
+
+ Rating: 4 - The answer is derived from the context mostly.
+
+Explanation: The context provides information about supportive care for ICU patients, which includes monitoring vital signs, providing adequate nutrition, preventing infection, maintaining fluid balance, and performing blood tests. The answer incorporates all of these elements in its protocol for managing sepsis in a critical care unit. Additionally, the context mentions point-of-care testing specifically for monitoring electrolyte levels and performing blood cultures, which is also included in the answer. However, the answer goes beyond the context by adding &quot;administer antibiotics as soon as possible&quot; and &quot;provide emotional support and maintain patient dignity,&quot; which are not explicitly mentioned in the context but are related to critical care medicine in general.
+
+ Rating: 5
+
+Explanation: The AI-generated answer directly addresses all the key aspects of managing sepsis in a critical care unit as outlined in the question from the provided context. It includes monitoring vital signs, performing weight checks, administering antibiotics, providing adequate nutrition, maintaining fluid balance, preventing infection and gastritis, using point-of-care testing, and ensuring emotional support and patient dignity.</code></pre>
+<h4 id="observation-10">Observation</h4>
+<p>Rating is 5 – grounding and relevance means the answer is fully substantiated by the context and is maximally pertinent to the query.</p>
+<h4 id="query2">Query2</h4>
+<div class="sourceCode" id="cb116"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb116-1"><a href="#cb116-1" aria-hidden="true"></a>user_input2 <span class="op">=</span> <span class="st">&#39;What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?&#39;</span></span>
+<span id="cb116-2"><a href="#cb116-2" aria-hidden="true"></a>ground,rel <span class="op">=</span> generate_ground_relevance_response(user_input2,retriever2,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">350</span>)</span>
+<span id="cb116-3"><a href="#cb116-3" aria-hidden="true"></a></span>
+<span id="cb116-4"><a href="#cb116-4" aria-hidden="true"></a></span>
+<span id="cb116-5"><a href="#cb116-5" aria-hidden="true"></a><span class="bu">print</span>(ground,end<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb116-6"><a href="#cb116-6" aria-hidden="true"></a><span class="bu">print</span>(rel)</span></code></pre></div>
+<pre><code>--- Generated Prompt ---
+
+You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.
+Use the context provided to find accurate and reliable answers.
+If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.
+Do not mention the context or the Merck Manual in your final answer.
+
+
+###Context
+The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:
+Appendicitis is acute inflammation of the vermiform appendix, typically resulting in abdominal
+pain, anorexia, and abdominal tenderness. Diagnosis is clinical, often supplemented by CT or
+ultrasound. Treatment is surgical removal.
+In the US, acute appendicitis is the most common cause of acute abdominal pain requiring surgery. Over
+5% of the population develops appendicitis at some point. It most commonly occurs in the teens and 20s
+but may occur at any age.
+Other conditions affecting the appendix include carcinoids, cancer, villous adenomas, and diverticula. The
+appendix may also be affected by Crohn&#39;s disease or ulcerative colitis with pancolitis.The Merck Manual of Diagnosis &amp; Therapy, 19th Edition
+Chapter 11. Acute Abdomen &amp; Surgical Gastroenterology
+163rajasekar.t7@gmail.com
+EB3R42OHCV
+This file is meant for personal use by rajasekar.t7@gmail.com only.
+Sharing or publishing the contents in part or full is liable for legal action.. • Surgical removal
+• IV fluids and antibiotics
+Treatment of acute appendicitis is open or laparoscopic appendectomy; because treatment delay
+increases mortality, a negative appendectomy rate of 15% is considered acceptable. The surgeon can
+usually remove the appendix even if perforated. Occasionally, the appendix is difficult to locate: In these
+cases, it usually lies behind the cecum or the ileum and mesentery of the right colon. A contraindication to
+appendectomy is inflammatory bowel disease involving the cecum. However, in cases of terminal ileitis
+and a normal cecum, the appendix should be removed.
+Appendectomy should be preceded by IV antibiotics. Third-generation cephalosporins are preferred. For
+nonperforated appendicitis, no further antibiotics are required. If the appendix is perforated, antibiotics
+should be continued until the patient&#39;s temperature and WBC count have normalized or continued for a
+fixed course, according to the surgeon&#39;s preference. If surgery is impossible, antibiotics—although not
+curative—markedly improve the survival rate. When a large inflammatory mass is found involving the
+appendix, terminal ileum, and cecum, resection of the entire mass and ileocolostomy are preferable. In
+late cases in which a pericolic abscess has already formed, the abscess is drained either by an
+ultrasound-guided percutaneous catheter or by open operation (with appendectomy to follow at a later
+date). A Meckel&#39;s diverticulum in a patient under the age of 40 should be removed concomitantly with the
+appendectomy unless extensive inflammation around the appendix prevents the procedure.
+Hernias of the Abdominal Wall
+A hernia of the abdominal wall is a protrusion of the abdominal contents through an acquired or
+congenital area of weakness or defect in the wall. Many hernias are asymptomatic, but some
+become incarcerated or strangulated, causing pain and requiring immediate surgery. Diagnosis
+is clinical. Treatment is elective surgical repair.
+Abdominal hernias are extremely common, particularly among males, necessitating about 700,000
+operations each year in the US.
+Classification
+Abdominal hernias are classified as either abdominal wall or groin hernias. Strangulated hernias are
+ischemic from physical constriction of their blood supply. Gangrene, perforation, and peritonitis may
+
+###Question
+What are the common symptoms for appendicitis, and can it be cured via medicine? If not, what surgical procedure should be followed to treat it?
+
+--- End of Generated Prompt ---
+
+
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+
+
+ Rating: 5 - The AI-generated answer is completely derived from the context provided. The context mentions the symptoms, diagnosis, treatment options, and related conditions for appendicitis, as well as the information about hernias of the abdominal wall. The AI answer summarizes all these points accurately.
+
+ Rating: 5
+
+Explanation: The AI-generated answer directly addresses all important aspects of the question by providing a detailed explanation of the common symptoms for appendicitis, stating that it cannot be cured via medicine alone, and describing the standard surgical procedure for treating appendicitis. It also mentions the use of IV antibiotics before surgery and the possibility of resection of the entire mass if necessary. The answer is fully relevant to the question based on the provided context.</code></pre>
+<h4 id="observation-11">Observation</h4>
+<p>Rating is 5 – grounding and relevance means the answer is fully substantiated by the context and is maximally pertinent to the query.</p>
+<h4 id="query3">Query3</h4>
+<div class="sourceCode" id="cb118"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb118-1"><a href="#cb118-1" aria-hidden="true"></a>user_input3 <span class="op">=</span> <span class="st">&#39;What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?&#39;</span></span>
+<span id="cb118-2"><a href="#cb118-2" aria-hidden="true"></a>ground,rel <span class="op">=</span> generate_ground_relevance_response(user_input3,retriever2,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">350</span>)</span>
+<span id="cb118-3"><a href="#cb118-3" aria-hidden="true"></a></span>
+<span id="cb118-4"><a href="#cb118-4" aria-hidden="true"></a></span>
+<span id="cb118-5"><a href="#cb118-5" aria-hidden="true"></a></span>
+<span id="cb118-6"><a href="#cb118-6" aria-hidden="true"></a><span class="bu">print</span>(ground,end<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb118-7"><a href="#cb118-7" aria-hidden="true"></a><span class="bu">print</span>(rel)</span></code></pre></div>
+<pre><code>--- Generated Prompt ---
+
+You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.
+Use the context provided to find accurate and reliable answers.
+If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.
+Do not mention the context or the Merck Manual in your final answer.
+
+
+###Context
+The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:
+corticosteroids, retinoids, or immunosuppressants.
+Hair loss due to chemotherapy is temporary and is best treated with a wig; when hair regrows, it may be
+different in color and texture from the original hair. Hair loss due to telogen effluvium or anagen effluvium
+is usually temporary as well and abates after the precipitating agent is eliminated.
+Key Points
+• Androgenetic alopecia (male-pattern and female-pattern hair loss) is the most common type of hair loss.
+• Concomitant virilization in women or scarring hair loss should prompt a thorough evaluation for the
+underlying disorder.
+• Microscopic hair examination or scalp biopsy may be required for definitive diagnosis.
+Alopecia Areata
+Alopecia areata is sudden patchy hair loss in people with no obvious skin or systemic disorder.
+The scalp and beard are most frequently affected, but any hairy area may be involved. Hair loss may
+affect most or all of the body (alopecia universalis). Alopecia areata is thought to be an autoimmune
+disorder affecting genetically susceptible people exposed to unclear environmental triggers, such asThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition
+Chapter 86. Hair Disorders
+849rajasekar.t7@gmail.com
+EB3R42OHCV
+This file is meant for personal use by rajasekar.t7@gmail.com only.
+Sharing or publishing the contents in part or full is liable for legal action.. corticosteroids, retinoids, or immunosuppressants.
+Hair loss due to chemotherapy is temporary and is best treated with a wig; when hair regrows, it may be
+different in color and texture from the original hair. Hair loss due to telogen effluvium or anagen effluvium
+is usually temporary as well and abates after the precipitating agent is eliminated.
+Key Points
+• Androgenetic alopecia (male-pattern and female-pattern hair loss) is the most common type of hair loss.
+• Concomitant virilization in women or scarring hair loss should prompt a thorough evaluation for the
+underlying disorder.
+• Microscopic hair examination or scalp biopsy may be required for definitive diagnosis.
+Alopecia Areata
+Alopecia areata is sudden patchy hair loss in people with no obvious skin or systemic disorder.
+The scalp and beard are most frequently affected, but any hairy area may be involved. Hair loss may
+affect most or all of the body (alopecia universalis). Alopecia areata is thought to be an autoimmune
+disorder affecting genetically susceptible people exposed to unclear environmental triggers, such asThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition
+Chapter 86. Hair Disorders
+849rajasekar.t7@gmail.com
+EB3R42OHCV
+This file is meant for personal use by rajasekar.t7@gmail.com only.
+Sharing or publishing the contents in part or full is liable for legal action.
+
+###Question
+What are the effective treatments or solutions for addressing sudden patchy hair loss, commonly seen as localized bald spots on the scalp, and what could be the possible causes behind it?
+
+--- End of Generated Prompt ---
+
+
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+
+
+ Rating: 5 - The Answer is derived from the Context completely. The context mentions alopecia areata as a condition causing sudden patchy hair loss, and the Merck Manual mentioned in the context suggests corticosteroids, retinoids, or immunosuppressants as potential treatments for this condition. The Answer accurately reflects this information from the Context.
+
+ Rating: 5
+
+Explanation: The question asks about effective treatments or solutions for sudden patchy hair loss, specifically mentioning localized bald spots on the scalp. The context provided discusses alopecia areata, which is a condition characterized by sudden patchy hair loss with no obvious skin or systemic disorder. The answer directly addresses the question by stating that corticosteroids, retinoids, and immunosuppressants may be effective treatments for this condition as suggested in the context. Additionally, the answer explains that the cause behind alopecia areata is unclear but may involve genetic susceptibility and environmental triggers, which aligns with the information provided in the context. Therefore, the answer is fully relevant to the question.</code></pre>
+<h4 id="observation-12">Observation</h4>
+<p>Rating is 5 – grounding and relevance means the answer is fully substantiated by the context and is maximally pertinent to the query.</p>
+<h4 id="query4">Query4</h4>
+<div class="sourceCode" id="cb120"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb120-1"><a href="#cb120-1" aria-hidden="true"></a>user_input4 <span class="op">=</span> <span class="st">&#39;What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?&#39;</span></span>
+<span id="cb120-2"><a href="#cb120-2" aria-hidden="true"></a>ground,rel <span class="op">=</span> generate_ground_relevance_response(user_input4,retriever2,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">350</span>)</span>
+<span id="cb120-3"><a href="#cb120-3" aria-hidden="true"></a></span>
+<span id="cb120-4"><a href="#cb120-4" aria-hidden="true"></a></span>
+<span id="cb120-5"><a href="#cb120-5" aria-hidden="true"></a><span class="bu">print</span>(ground,end<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb120-6"><a href="#cb120-6" aria-hidden="true"></a><span class="bu">print</span>(rel)</span></code></pre></div>
+<pre><code>--- Generated Prompt ---
+
+You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.
+Use the context provided to find accurate and reliable answers.
+If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.
+Do not mention the context or the Merck Manual in your final answer.
+
+
+###Context
+The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:
+Chapter 324. Traumatic Brain Injury
+Introduction
+Traumatic brain injury (TBI) is physical injury to brain tissue that temporarily or permanently
+impairs brain function. Diagnosis is suspected clinically and confirmed by imaging (primarily
+CT). Initial treatment consists of ensuring a reliable airway and maintaining adequate
+ventilation, oxygenation, and blood pressure. Surgery is often needed in patients with more
+severe injury to place monitors to track and treat intracranial pressure, decompress the brain if
+intracranial pressure is increased, or remove intracranial hematomas. In the first few days after
+the injury, maintaining adequate brain perfusion and oxygenation and preventing complications
+of altered sensorium are important. Subsequently, many patients require rehabilitation.
+In the US, as in much of the world, TBI is a common cause of death and disability. Causes include motor
+vehicle crashes and other transportation-related causes (eg, bicycle crashes, collisions with pedestrians),
+falls (especially in older adults and young children), assaults, and sports activities.
+Pathology
+Structural changes from head injury may be gross or microscopic, depending on the mechanism and
+forces involved. Patients with less severe injuries may have no gross structural damage. Clinical
+manifestations vary markedly in severity and consequences. Injuries are commonly categorized as open
+or closed.
+Open injuries involve penetration of the scalp and skull (and usually the meninges and underlying brain
+tissue). They typically involve 
+bullets or sharp objects, but a skull fracture with overlying laceration due to
+severe blunt force is also considered an open injury.
+Closed injuries typically occur when the head is struck, strikes an object, or is shaken violently, causing
+rapid brain acceleration and deceleration. Acceleration or deceleration can injure tissue at the point of
+impact (coup), at its opposite pole (contrecoup), or diffusely; the frontal and temporal lobes are
+particularly vulnerable. Axons, blood vessels, or both can be sheared or torn. Disrupted blood vessels
+leak, causing contusions, intracerebral or subarachnoid hemorrhage, and epidural or subdural
+hematomas (see
+Table 324-1
+).
+Concussion:
+ Concussion is defined as a transient and reversible posttraumatic alteration in mental. Chapter 324. Traumatic Brain Injury
+Introduction
+Traumatic brain injury (TBI) is physical injury to brain tissue that temporarily or permanently
+impairs brain function. Diagnosis is suspected clinically and confirmed by imaging (primarily
+CT). Initial treatment consists of ensuring a reliable airway and maintaining adequate
+ventilation, oxygenation, and blood pressure. Surgery is often needed in patients with more
+severe injury to place monitors to track and treat intracranial pressure, decompress the brain if
+intracranial pressure is increased, or remove intracranial hematomas. In the first few days after
+the injury, maintaining adequate brain perfusion and oxygenation and preventing complications
+of altered sensorium are important. Subsequently, many patients require rehabilitation.
+In the US, as in much of the world, TBI is a common cause of death and disability. Causes include motor
+vehicle crashes and other transportation-related causes (eg, bicycle crashes, collisions with pedestrians),
+falls (especially in older adults and young children), assaults, and sports activities.
+Pathology
+Structural changes from head injury may be gross or microscopic, depending on the mechanism and
+forces involved. Patients with less severe injuries may have no gross structural damage. Clinical
+manifestations vary markedly in severity and consequences. Injuries are commonly categorized as open
+or closed.
+Open injuries involve penetration of the scalp and skull (and usually the meninges and underlying brain
+tissue). They typically involve 
+bullets or sharp objects, but a skull fracture with overlying laceration due to
+severe blunt force is also considered an open injury.
+Closed injuries typically occur when the head is struck, strikes an object, or is shaken violently, causing
+rapid brain acceleration and deceleration. Acceleration or deceleration can injure tissue at the point of
+impact (coup), at its opposite pole (contrecoup), or diffusely; the frontal and temporal lobes are
+particularly vulnerable. Axons, blood vessels, or both can be sheared or torn. Disrupted blood vessels
+leak, causing contusions, intracerebral or subarachnoid hemorrhage, and epidural or subdural
+hematomas (see
+Table 324-1
+).
+Concussion:
+ Concussion is defined as a transient and reversible posttraumatic alteration in mental
+
+###Question
+What treatments are recommended for a person who has sustained a physical injury to brain tissue, resulting in temporary or permanent impairment of brain function?
+
+--- End of Generated Prompt ---
+
+
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+
+
+ Rating: 5 - The AI generated answer is completely derived from the context. The context provides detailed information about the diagnosis, initial treatment, and subsequent care for a person with a traumatic brain injury (TBI). The AI answer accurately summarizes these key points.
+
+ Rating: 5
+
+Explanation: The AI-generated answer directly addresses the key aspects of the question by discussing the initial treatment for a person with a traumatic brain injury (TBI), which includes ensuring a reliable airway, maintaining adequate ventilation, oxygenation, and blood pressure. It also mentions that surgery may be needed in more severe cases to treat intracranial pressure or remove hematomas. The answer also mentions the importance of preventing complications in the first few days after the injury and the need for rehabilitation subsequently. All of these points are directly related to the question and come from the provided context.</code></pre>
+<h4 id="observation-13">Observation</h4>
+<p>Rating is 5 – grounding and relevance means the answer is fully substantiated by the context and is maximally pertinent to the query.</p>
+<h4 id="query5">Query5</h4>
+<div class="sourceCode" id="cb122"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb122-1"><a href="#cb122-1" aria-hidden="true"></a>user_input5 <span class="op">=</span> <span class="st">&#39;What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?&#39;</span></span>
+<span id="cb122-2"><a href="#cb122-2" aria-hidden="true"></a>ground,rel <span class="op">=</span> generate_ground_relevance_response(user_input5,retriever2,k<span class="op">=</span><span class="dv">3</span>,max_tokens<span class="op">=</span><span class="dv">350</span>)</span>
+<span id="cb122-3"><a href="#cb122-3" aria-hidden="true"></a></span>
+<span id="cb122-4"><a href="#cb122-4" aria-hidden="true"></a></span>
+<span id="cb122-5"><a href="#cb122-5" aria-hidden="true"></a><span class="bu">print</span>(ground,end<span class="op">=</span><span class="st">&quot;</span><span class="ch">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb122-6"><a href="#cb122-6" aria-hidden="true"></a><span class="bu">print</span>(rel)</span></code></pre></div>
+<pre><code>--- Generated Prompt ---
+
+You are a helpful assistant trained to answer questions based only on the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition.
+Use the context provided to find accurate and reliable answers.
+If the answer is not found in the context, reply with &quot;I don&#39;t know&quot;.
+Do not mention the context or the Merck Manual in your final answer.
+
+
+###Context
+The following excerpts are from the Merck Manual of Medical Diagnosis and Therapy, Nineteenth Edition:
+• Possibly intraoral lacerations
+• Some heavily contaminated wounds
+If deemed necessary, antibiotics are given as early as possible; the first dose may be given parenterally.
+Wounds are immobilized
+ because excess movement of the affected area may interfere with healing.
+Wounds near joints should be immobilized with splints. Bulky dressings are used to immobilize fingers and
+hands. Wounds should be elevated, above heart level when feasible, for the first 48 h after suturing. A
+sling may help maintain some degree of elevation of an upper extremity wound. Patients with distal lower
+extremity lacerations (other than minor) should probably stay off their feet for several days (eg, by using
+crutches); restrictions on walking probably result in better healing.
+Wound care
+ is meticulous. The wound is kept clean and dry; dressings that are nonadherent and
+impermeable to bacteria are usually applied. Antibiotic ointment is applied daily until the wound closure
+device is removed. A reliable patient may inspect minor, clean lacerations, but early physician examination
+is preferable for higher risk wounds and wounds in unreliable patients. After 12 h, well-healing woundsThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition
+Chapter 322. Lacerations
+3377rajasekar.t7@gmail.com
+EB3R42OHCV
+This file is meant for personal use by rajasekar.t7@gmail.com only.
+Sharing or publishing the contents in part or full is liable for legal action.. batting, and layers 2 and 4 are elastic bandages. The injured limb is elevated above the heart for the first
+2 days in a position that allows gravity to help drain edema fluid and thus minimize swelling. After 48 h,
+periodic application of warmth (eg, a heating pad) for 15 to 20 min may relieve pain and speed healing.
+Immobilization:
+ Immobilization decreases pain and facilitates healing by preventing further injury and is
+helpful except for very rapidly healing injuries. Joints proximal and distal to the injury should be
+immobilized.
+A cast is usually used for fractures or other injuries that require weeks of immobilization. Rarely, swelling
+under a cast is severe enough to contribute to compartment syndrome (see p. 
+3213
+). Sometimes, if
+severe swelling is likely, a cast (and all padding) is cut open from end to end medially and laterally
+(bivalved). Patients with casts should be given written instructions:
+• To keep the cast dry
+• Never to put an object inside the cast
+• To inspect the cast&#39;s edges and skin around the cast every day and apply lotion to any red or sore areas
+• To pad any rough edges with soft adhesive tape, cloth, or other soft material to prevent the cast&#39;s edgesThe Merck Manual of Diagnosis &amp; Therapy, 19th Edition
+Chapter 323. Fractures, Dislocations &amp; Sprains
+3381rajasekar.t7@gmail.com
+EB3R42OHCV
+This file is meant for personal use by rajasekar.t7@gmail.com only.
+Sharing or publishing the contents in part or full is liable for legal action.
+
+###Question
+What are the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, and what should be considered for their care and recovery?
+
+--- End of Generated Prompt ---
+
+
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+Llama.generate: prefix-match hit
+
+
+ Rating: 5 - The Answer is derived from the Context completely.
+
+Explanation: The context provided in the text discusses various aspects of wound care, immobilization, and recovery for injuries such as lacerations and fractures. The question asks about the necessary precautions and treatment steps for a person who has fractured their leg during a hiking trip, which is directly related to the information presented in the context. The answer summarizes the key points from the context regarding immobilization, antibiotic therapy, elevation, and patient care instructions for a person with a fractured leg. Therefore, the answer is derived completely from the context.
+
+ Rating: 5
+
+Explanation: The answer directly addresses all important aspects of the question based on the context provided. It covers necessary precautions such as early antibiotic therapy, immobilization using a cast or splints, elevation of the injured limb, and wound care instructions. It also mentions staying off feet for several days for distal lower extremity lacerations and periodic application of warmth and gentle exercise after recovery. The answer is fully relevant to the question.</code></pre>
+<h4 id="observation-14">Observation</h4>
+<p>Rating is 5 – grounding and relevance means the answer is fully substantiated by the context and is maximally pertinent to the query.</p>
+<h1 id="conclusion"><strong>Conclusion</strong></h1>
+<p><strong>Business Benefits (Insights &amp; Value)</strong></p>
+<ul>
+<li><p>High Trust &amp; Reliability: RAG-based answers are context-specific and highly reliable, directly enhancing customer satisfaction and trust in medical applications.</p></li>
+<li><p>Superior User Experience (UX): The model provides personalized, relevant, and accurate responses, leading to a significantly improved user experience.</p></li>
+<li><p>Cost Efficiency: Automating medical Q&amp;A dramatically reduces the necessity for human consultations, leading to substantial cost savings in telemedicine and healthcare support services.</p></li>
+</ul>
+<p><strong>Strategic Recommendations (Future Action)</strong></p>
+<ul>
+<li><p>Mandatory Continuous Fine-tuning: The model requires ongoing updates and fine-tuning to reflect the latest medical guidelines and research (ensuring information remains current).</p></li>
+<li><p>Develop Specialized Models: Create dedicated models tailored to individual medical specialties (e.g., orthopedics, oncology) to maximize accuracy and relevance within specific domains.</p></li>
+</ul>
